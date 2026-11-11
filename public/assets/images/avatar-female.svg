@@ -1,0 +1,44 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="skinGradF" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f5deb3;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#deb887;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="hairGradF" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#5d4037;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3e2723;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="shirtGradF" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4fc3f7;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#29b6f6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Shadow -->
+  <ellipse cx="32" cy="52" rx="18" ry="4" fill="#000000" opacity="0.25" />
+
+  <!-- Body -->
+  <rect x="20" y="32" width="24" height="18" rx="4" fill="url(#shirtGradF)" stroke="#ffffff" stroke-width="1.5" opacity="0.85" />
+
+  <!-- Arms -->
+  <line x1="14" y1="38" x2="8" y2="46" stroke="url(#shirtGradF)" stroke-width="6" stroke-linecap="round" />
+  <line x1="50" y1="38" x2="56" y2="46" stroke="url(#shirtGradF)" stroke-width="6" stroke-linecap="round" />
+  <circle cx="6" cy="46" r="2.5" fill="#ffffff" opacity="0.7" />
+  <circle cx="58" cy="46" r="2.5" fill="#ffffff" opacity="0.7" />
+
+  <!-- Head -->
+  <circle cx="32" cy="26" r="11" fill="url(#skinGradF)" stroke="#ffffff" stroke-width="1.5" />
+
+  <!-- Hair -->
+  <path d="M 21 15 Q 32 8 43 15 L 43 32 Q 32 28 21 32 Z" fill="url(#hairGradF)" />
+  <path d="M 21 15 Q 32 5 43 15" fill="none" stroke="#3e2723" stroke-width="3" />
+
+  <!-- Face -->
+  <circle cx="28" cy="24" r="1.5" fill="#3e2723" />
+  <circle cx="36" cy="24" r="1.5" fill="#3e2723" />
+  <circle cx="32" cy="27" r="2" fill="#d48a5e" />
+  <path d="M 29 30 Q 32 32 35 30" fill="none" stroke="#3e2723" stroke-width="1.5" />
+
+  <!-- Face emoji (waterer role) -->
+  <text x="32" y="29" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" dominant-baseline="middle">💧</text>
+</svg>

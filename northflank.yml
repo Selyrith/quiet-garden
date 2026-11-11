@@ -1,0 +1,22 @@
+# Northflank — Developer Sandbox (2 сервиса, БЕЗ засыпания, до $20/мес ресурсов)
+# Создать: New Service > Add from Dockerfile
+# Health check: /health
+# Volume (persistent disk) для /app/data — примонтировать в настройках сервиса.
+services:
+  - name: quiet-garden
+    build:
+      dockerfile: ./Dockerfile
+      context: .
+    runtime:
+      type: nodejs
+    health_check:
+      path: /health
+      port: 3002
+      initial_delay_seconds: 15
+      period_seconds: 30
+    env:
+      NODE_ENV: production
+      PORT: "3002"
+    resources:
+      cpu: 0.1
+      memory: 512Mi

@@ -1,0 +1,22 @@
+# Koyeb — Free Instance (засыпает после 1 часа без трафика, cold start 1-5 сек)
+# Создать: Create Service > Dockerfile
+# Health check: /health
+# Volume для /app/data доступен только для standard-инстансов (не free).
+app:
+  name: quiet-garden
+  docker:
+    dockerfile: Dockerfile
+  ports:
+    - 3002
+  env:
+    NODE_ENV: production
+    PORT: "3002"
+  healthcheck:
+    path: /health
+    port: 3002
+    initial_delay_seconds: 15
+    period_seconds: 30
+  instance:
+    type: free
+    regions:
+      - fra

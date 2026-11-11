@@ -1,0 +1,15 @@
+{
+  "name": "Quiet Garden",
+  "short_name": "Garden",
+  "description": "Кооперативный антистресс-сад для 2-4 игроков",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#3e2723",
+  "theme_color": "#2c1b10",
+  "lang": "ru",
+  "icons": [
+    { "src": "./icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

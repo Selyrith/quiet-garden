@@ -1,0 +1,116 @@
+# Quiet Garden — Кооперативный антистресс-сад
+
+Phaser 3 + Socket.IO клиент-серверная игра для 2–4 игроков. Выращивайте растения, открывайте виды, собирайте урожай вместе.
+
+## Требования
+
+- **Node.js >= 22.13** (обязательно: pnpm 11 требует эту версию)
+
+## Локальный запуск
+
+```bash
+pnpm install
+pnpm run dev      # клиент (Vite) на http://localhost:5174
+pnpm run server   # сервер на http://localhost:3002
+```
+
+Или всё сразу:
+
+```bash
+pnpm start
+```
+
+## Production-сборка и запуск (как на сервере)
+
+```bash
+pnpm install
+pnpm run build    # клиент -> dist/
+pnpm run server   # сервер сам отдаёт dist/ на http://localhost:3002
+```
+
+Собранный клиент лежит в `dist/`, сервер отдаёт его как корень сайта.
+Клиент подключается к **тому же хосту** через `/socket.io` — отдельный
+`VITE_SERVER_URL` не нужен, если фронт и бэк на одном домене.
+
+Проверить, что всё живо:
+
+```bash
+curl http://localhost:3002/health
+# {"ok":true,"uptime":12,"rooms":3}
+```
+
+## Переменные окружения
+
+| Переменная | По умолчанию | Описание |
+|---|---|---|
+| `PORT` | `3002` | Порт HTTP/WebSocket сервера |
+| `VITE_SERVER_URL` | — (same-origin) | URL сервера; задавайте только если сервер на отдельном домене |
+
+`.env` не попадает в git. Скопируйте `.env.example` в `.env` при необходимости.
+
+## Деплой (Docker)
+
+В репозитории есть готовый `Dockerfile` (multi-stage: сборка клиента → запуск сервера).
+
+```bash
+docker build -t quiet-garden .
+docker run -p 3002:3002 -v qg-data:/app/data quiet-garden
+```
+
+Готовые конфиги:
+- `render.yaml` — Render.com (free-план)
+- `northflank.yml` — Northflank (Developer Sandbox, без засыпания)
+- `koyeb.yaml` — Koyeb (free, засыпает после 1 ч простоя)
+
+Health-check для всех платформ: `GET /health`
+
+## Структура проекта
+
+```
+quiet-garden/
+├── server/            # Серверная часть (Node.js + Socket.IO)
+│   ├── index.js       # Точка входа: статика, health-check, обработчики сокетов
+│   ├── handlers.js    # tile-action, activity-action, upgrade-buy, buy-pack
+│   ├── rooms.js       # Комнаты, тики, спавн активностей
+│   ├── garden.js      # Логика грядок, рост, сбор урожая
+│   ├── goals.js       # Ежедневные награды, квесты
+│   ├── save.js        # Сохранение/загрузка комнат (data/rooms.json)
+│   ├── player-profiles.js # Профили игроков (data/player-profiles.json)
+│   └── ...
+├── shared/            # Общий код клиента и сервера
+├── src/               # Клиентская часть (Phaser 3)
+├── public/            # Статика: аудио, иконки, PWA-манифест
+├── dist/              # Production-сборка клиента (создаётся pnpm run build)
+├── data/              # Сохранения (gitignored, создаётся автоматически)
+├── Dockerfile
+└── render.yaml / northflank.yml / koyeb.yaml
+```
+
+## Хранилище
+
+Игра пишет два файла в `data/`:
+- `rooms.json` — состояние комнат (7 дней жизни)
+- `player-profiles.json` — профили игроков, никнаймы, коллекции
+
+**Важно:** на бесплатных платформах с эфемерным диском (Render free,
+Koyeb free) эти файлы **сбрасываются при каждом рестарте/деплое**.
+Чтобы сохранения жили, нужен либо persistent disk (платно на Render, Volumes
+в preview на Koyeb), либо VPS с постоянным диском.
+
+## Скрипты
+
+| Скрипт | Описание |
+|---|---|
+| `pnpm run dev` | Vite dev-сервер (клиент) |
+| `pnpm run build` | Production-сборка клиента в `dist/` |
+| `pnpm run preview` | Предпросмотр собранной версии |
+| `pnpm run server` | Только сервер |
+| `pnpm start` | Сервер + клиент одновременно |
+| `pnpm run check` | Синтаксис server/*.js + vite build |
+| `pnpm test` | Тесты (`node --test`) |
+
+## PWA
+
+Приложение устанавливается на главный экран через меню браузера
+(Chrome: ⋮ → «Установить приложение»). Иконка — SVG (совместимо с Android/Chrome).
+Для iOS в проде сгенерируйте PNG 180×180 и замените `apple-touch-icon`.

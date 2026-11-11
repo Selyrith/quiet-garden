@@ -1,0 +1,20 @@
+# Render.com — бесплатный Web Service
+# Создать: New > Web Service > Connect repo > Runtime: Docker
+# Health Check Path: /health
+services:
+  - type: web
+    name: quiet-garden
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    region: frankfurt
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3002
+    # ВАЖНО: на free-плане диск эфемерный — data/rooms.json будет теряться
+    # при рестарте. Для сохранения нужен платный persistent disk
+    # или внешнее хранилище.

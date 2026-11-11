@@ -1,0 +1,15 @@
+node_modules
+dist
+.git
+.gitignore
+*.md
+!README.md
+data
+logs
+*.log
+.vscode
+.idea
+.dsh
+.vite
+memory
+docs

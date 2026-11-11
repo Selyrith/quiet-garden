@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#F5F0E8" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
+  <link rel="apple-touch-icon" href="./icons/icon.svg" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Quiet Garden</title>
+  <meta name="description" content="Quiet Garden — кооперативный антистресс-сад для 2-4 игроков. Выращивайте растения, открывайте виды, собирайте урожай вместе." />
+  <meta property="og:title" content="Quiet Garden" />
+  <meta property="og:description" content="Кооперативный антистресс-сад для 2-4 игроков" />
+  <meta property="og:type" content="website" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600&display=swap');
+
+    :root {
+      --bg-primary: #F9F5EE;
+      --bg-secondary: #F2E9DA;
+      --accent-rose: #E3B5A8;
+      --accent-peach: #F0C9AE;
+      --accent-sage: #B9C8A6;
+      --accent-earth: #C4A684;
+      --accent-leaf: #A8D593;
+      --text-primary: #6B5B4A;
+      --text-secondary: #9E8C75;
+      --border-light: #E6DCC9;
+      --tile-green: #B8D8B8;
+      --tile-hover: #F3EFE4;
+      --btn-primary-start: #D8A494;
+      --btn-primary-end: #C9A884;
+      --btn-secondary-bg: #D8CEBD;
+      --shadow-soft: rgba(96, 80, 66, 0.08);
+      --shadow-card: rgba(96, 80, 66, 0.12);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: var(--bg-primary); 
+      font-family: 'Inter', 'Nunito', 'Segoe UI', Tahoma, sans-serif;
+      touch-action: none; -webkit-tap-highlight-color: transparent;
+    }
+    #game-container {
+      width: 100vw; height: 100vh; height: 100dvh;
+      padding-bottom: env(safe-area-inset-bottom);
+      position: relative;
+      z-index: 10;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: 
+        radial-gradient(at 25% 25%, #FFF8EF 0%, var(--bg-primary) 60%),
+        radial-gradient(at 75% 75%, #F2E9DA 0%, var(--bg-primary) 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .screen {
+      position: fixed; inset: 0; 
+      background: none;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 10; width: 100%; height: 100%;
+    }
+    .screen.hidden { display: none; }
+
+    .screen .container {
+      background: linear-gradient(180deg, rgba(255,255,255,0.7), rgba(242,233,218,0.85));
+      backdrop-filter: blur(16px);
+      width: 100%; max-width: 460px; padding: 40px 28px;
+      border-radius: 32px; box-shadow: 
+        0 30px 60px var(--shadow-card), 
+        0 0 0 1px var(--border-light);
+      border: none;
+    }
+
+    .title { 
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 700; font-size: clamp(1.8rem, 6vw, 2.4rem); 
+      color: var(--text-primary); letter-spacing: -0.02em; 
+      margin-bottom: 6px; text-shadow: 0 2px 6px rgba(201, 168, 132, 0.25);
+    }
+    .subtitle { 
+      font-family: 'Inter', sans-serif; font-size: 0.95rem; 
+      color: var(--text-secondary); margin-bottom: 32px; font-weight: 400;
+    }
+
+    .slots-container {
+      display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 380px;
+      margin-top: 4px;
+    }
+    
+    .slot {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border-light); border-radius: 24px;
+      padding: 22px 20px; display: flex; justify-content: space-between; align-items: center;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer; text-align: left; position: relative;
+      box-shadow: 0 8px 24px var(--shadow-soft);
+    }
+    .slot:hover { 
+      border-color: var(--accent-earth); 
+      box-shadow: 0 16px 32px rgba(196, 166, 132, 0.18);
+      transform: translateY(-2px);
+    }
+    .slot:active { transform: scale(0.985); }
+    
+    .slot.empty { 
+      border-style: dashed; background: rgba(184, 213, 147, 0.08); border-color: var(--accent-sage);
+    }
+    .slot.empty:hover { background: rgba(184, 213, 147, 0.14); }
+    
+    .slot-info { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+    .slot-title { color: var(--text-primary); font-size: 16px; font-weight: 600; font-family: 'DM Sans', sans-serif; }
+    .slot-sub { color: var(--text-secondary); font-size: 12px; }
+    
+    .slot-delete {
+      position: absolute; top: 12px; right: 12px; background: none; 
+      color: var(--text-secondary); border: none; cursor: pointer; 
+      font-size: 12px; font-weight: 600; transition: all 0.2s;
+      padding: 6px 8px; border-radius: 10px;
+    }
+    .slot-delete:hover { color: var(--accent-earth); background: rgba(196, 166, 132, 0.1); }
+    .slot-delete:focus { outline: 2px solid var(--accent-earth); outline-offset: 2px; }
+
+    .join-area {
+      margin-top: 32px; width: 100%; max-width: 380px;
+    }
+    .nick-input {
+      width: 100%; min-width: 0; 
+      padding: 18px 20px; font-size: 17px;
+      border: 2px solid var(--border-light); border-radius: 20px;
+      background: #fff; color: var(--text-primary); font-weight: 500;
+      outline: none; transition: all 0.2s;
+    }
+    .nick-input:focus { border-color: var(--accent-sage); box-shadow: 0 0 0 4px rgba(185, 200, 166, 0.15); }
+    .nick-input::placeholder { color: var(--text-secondary); font-size: 15px; }
+    .input-row {
+      display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;
+    }
+    
+    .code-input {
+      width: 100%; min-width: 0; 
+      padding: 22px 20px; font-size: 22px; letter-spacing: 5px; 
+      text-transform: uppercase; border: 2px solid var(--border-light);
+      border-radius: 20px; font-family: 'DM Sans', monospace; outline: none;
+      background: #fff; color: var(--text-primary); font-weight: 700;
+      transition: all 0.2s;
+    }
+    .code-input:focus { border-color: var(--accent-sage); box-shadow: 0 0 0 4px rgba(185, 200, 166, 0.15); }
+
+    .btn-join {
+      width: 100%; padding: 22px; font-size: 19px; 
+      background: linear-gradient(180deg, var(--btn-primary-start), var(--btn-primary-end)); 
+      color: #FFFFFF; border: none; border-radius: 22px; cursor: pointer; 
+      font-family: 'DM Sans', sans-serif; font-weight: 700; white-space: nowrap;
+      box-shadow: 0 10px 20px rgba(201, 168, 132, 0.25); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .btn-join:active { transform: scale(0.97); box-shadow: 0 4px 10px rgba(201, 168, 132, 0.2); }
+    .btn-join:hover { filter: brightness(1.03); box-shadow: 0 14px 28px rgba(201, 168, 132, 0.3); }
+
+    .error { 
+      color: var(--accent-earth); font-size: 13px; margin-top: 6px; min-height: 20px; 
+      font-weight: 500; margin-bottom: 4px;
+    }
+
+    .note-editor {
+      position: relative;
+      background: var(--bg-secondary);
+      border: 2px solid var(--border-light); 
+      border-radius: 24px;
+      padding: 26px 30px;
+      box-shadow: 0 20px 40px var(--shadow-card);
+      display: flex; flex-direction: column; gap: 16px;
+      font-family: 'Inter', sans-serif;
+    }
+    .note-title {
+      color: var(--accent-earth); font-weight: 600; font-size: 14px;
+      font-family: 'DM Sans', sans-serif; text-align: center;
+    }
+    .note-editor input[type="text"] {
+      width: 100%;
+      padding: 16px 20px;
+      font-size: 16px;
+      border: 2px solid var(--border-light);
+      border-radius: 16px;
+      background: #fff; color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      outline: none; transition: all 0.2s;
+      box-sizing: border-box;
+    }
+    .note-editor input[type="text"]:focus { border-color: var(--accent-sage); box-shadow: 0 0 0 4px rgba(185, 200, 166, 0.15); }
+    .note-btns { display: flex; gap: 10px; justify-content: center; }
+    .note-btn {
+      flex: 1; padding: 12px 0;
+      font-size: 14px; font-weight: 600;
+      border: none; border-radius: 16px; cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+    }
+    .note-btn:active { transform: scale(0.98); }
+    .note-btn-save {
+      background: linear-gradient(180deg, #a8e6cf, #8fd39c);
+      color: #2d5f3d;
+    }
+    .note-btn-save:hover { background: linear-gradient(180deg, #8fd39c, #7ec088); box-shadow: 0 6px 14px rgba(143, 211, 156, 0.3); }
+    .note-btn-cancel {
+      background: linear-gradient(180deg, #f5cac3, #ec9a91);
+      color: #7a4a42;
+    }
+    .note-btn-cancel:hover { background: linear-gradient(180deg, #ec9a91, #d98479); box-shadow: 0 6px 14px rgba(236, 154, 145, 0.3); }
+  </style>
+</head>
+<body>
+  <div id="game-container"></div>
+
+  <div class="screen" id="menuScreen">
+    <div class="container">
+      <div class="title">Quiet Garden</div>
+      <div class="subtitle">Выберите сад или создайте новый</div>
+
+      <div class="slots-container" id="slotsContainer">
+        <!-- Слоты будут сгенерированы через JS -->
+      </div>
+
+      <div class="join-area">
+        <div style="margin-bottom: 16px;">
+          <input class="nick-input" id="nickInput" type="text" maxlength="20" placeholder="Ваше имя" autocomplete="off" />
+        </div>
+        <div class="input-row">
+          <button class="btn-join" id="joinBtn">Войти</button>
+          <input class="code-input" id="codeInput" type="text" maxlength="6" placeholder="КОД ДРУГА" autocomplete="off" />
+        </div>
+        <div class="error" id="joinError"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
