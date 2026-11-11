@@ -1125,6 +1125,26 @@ export default class GameScene extends Phaser.Scene {
   }
 
   /**
+   * Убирает аватар игрока, который вышел из комнаты.
+   * Без этого аватар остаётся висеть на грядке как призрак.
+   */
+  removeAvatar(playerId) {
+    const av = this.avatars.get(playerId);
+    if (av) {
+      try {
+        av.walkTween?.stop();
+        av.breathTween?.stop();
+        av.destroy();
+      } catch {}
+      this.avatars.delete(playerId);
+    }
+    this.playerPositions.delete(playerId);
+    this.playerGenders?.delete(playerId);
+    this.roles && this.roles[playerId] !== undefined && delete this.roles[playerId];
+    this.hideJobIndicator?.(playerId);
+  }
+
+  /**
    * Данные об игроке из списка комнаты (ник, хост).
    */
   playerInfo(playerId) {

@@ -1,6 +1,7 @@
 import { getRole } from '../../shared/roles.js';
 import { PackOpeningOverlay } from '../ui/PackOpeningOverlay.js';
 import { updateAvatarLabel } from '../ui/PlayerAvatar.js';
+import { findRemovedPlayers } from '../ui/PlayerList.js';
 
 export const GameSceneNetwork = {
   setupNetworking() {
@@ -321,6 +322,12 @@ export const GameSceneNetwork = {
       });
       this.players = this.playerList.map((p) => p.id);
       if (hostId !== undefined) this.hostId = hostId ?? null;
+
+      // Убираем аватары ушедших игроков — иначе они остаются на грядках.
+      for (const goneId of findRemovedPlayers(this.avatars ? Array.from(this.avatars.keys()) : [], this.players)) {
+        this.removeAvatar(goneId);
+      }
+
       this.updatePlayerList();
       // Ники и позиции приходят вместе со списком: новый игрок должен
       // появиться у всех сразу, а не только у того, кто вошёл.

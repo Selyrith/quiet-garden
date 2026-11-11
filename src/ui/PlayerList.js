@@ -26,6 +26,26 @@ export function formatPlayerList(players, myPlayerId) {
   return parts.join('  ·  ');
 }
 
+/**
+ * Находит игроков, которые были в комнате, но больше в ней нет.
+ *
+ * Нужен, чтобы убрать аватар вышедшего игрока — иначе он остаётся
+ * висеть на грядке как призрак.
+ *
+ * @param {Array} previousIds id игроков на прошлом шаге
+ * @param {Array} currentIds id игроков сейчас
+ * @returns {string[]} id ушедших игроков
+ */
+export function findRemovedPlayers(previousIds = [], currentIds = []) {
+  const prev = (previousIds || []).map((p) => (typeof p === 'string' ? p : p?.id)).filter(Boolean);
+  const curr = new Set((currentIds || []).map((p) => (typeof p === 'string' ? p : p?.id)).filter(Boolean));
+
+  // Пустой текущий список — скорее всего сбой данных, удалять всех нельзя.
+  if (curr.size === 0) return [];
+
+  return prev.filter((id) => !curr.has(id));
+}
+
 export function updatePlayerList(textObj, players, roles, myPlayerId) {
   if (!textObj) return;
   const list = Array.isArray(players) ? players : [];
