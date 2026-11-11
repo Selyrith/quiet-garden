@@ -36,10 +36,20 @@ export default class PauseScene extends Phaser.Scene {
 
     this._createButton(W / 2, H * 0.52, 'Продолжить', 0x2ecc71, () => this.resumeGame());
     this._createButton(W / 2, H * 0.62, 'В меню', 0x475569, () => {
-      try { 
-        if (this.socket) this.socket.emit('leave-room');
-      } catch {}
-      window.location.replace(window.location.origin + window.location.pathname);
+      if (!this.socket) {
+        window.location.replace(window.location.origin + window.location.pathname);
+        return;
+      }
+      const done = () => {
+        window.location.replace(window.location.origin + window.location.pathname);
+      };
+      // Ждём подтверждения от сервера (макс 3с), чтобы точно выйти из комнаты
+      const timer = setTimeout(done, 3000);
+      this.socket.once('left-room', () => {
+        clearTimeout(timer);
+        done();
+      });
+      this.socket.emit('leave-room');
     });
 
     this.add.text(W / 2, H * 0.72, 'ESC — вернуться в игру', {

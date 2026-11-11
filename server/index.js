@@ -328,7 +328,10 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('leave-room', () => leaveCurrentRoom(socket));
+  socket.on('leave-room', () => {
+    const code = leaveCurrentRoom(socket);
+    if (code) socket.emit('left-room', { code });
+  });
 
   socket.on('disconnect', () => leaveCurrentRoom(socket));
 });
@@ -336,11 +339,11 @@ io.on('connection', (socket) => {
 function leaveCurrentRoom(socket) {
   const pid = socket.handshake.auth.playerId || socket.id;
   const code = socketRoom.get(pid);
-  if (!code) return;
+  if (!code) return null;
   const room = rooms.get(code);
   socketRoom.delete(pid);
   socket.leave(code);
-  if (!room) return;
+  if (!room) return code;
   
   room.players.delete(pid);
   if (room.roles) room.roles.delete(pid);
@@ -363,6 +366,7 @@ function leaveCurrentRoom(socket) {
       }
     }, ROOM_UNLOAD_MS); 
   }
+  return code;
 }
 
 server.listen(PORT, () => {
