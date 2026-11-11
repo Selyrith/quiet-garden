@@ -34,6 +34,7 @@ import {
   getProfile, createProfile, updateProfile, addToCollection, addCoins,
   addInventory, incrementStat, setProfileData, getAllProfiles
 } from './player-profiles.js';
+import { startKeepAliveFromEnv } from './keep-alive.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -366,4 +367,11 @@ function leaveCurrentRoom(socket) {
 
 server.listen(PORT, () => {
   console.log(`Quiet Garden server running on http://localhost:${PORT}`);
+
+  // Keep-alive: пингуем собственный публичный адрес, чтобы Render
+  // не усыплял free-сервис. Работает, только если адрес публичный.
+  const keepAlive = startKeepAliveFromEnv();
+  if (keepAlive) {
+    console.log('[keep-alive] Включён — сервис не уснёт после 15 минут простоя.');
+  }
 });

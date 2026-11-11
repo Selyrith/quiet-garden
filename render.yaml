@@ -1,6 +1,11 @@
 # Render.com — бесплатный Web Service
 # Создать: New > Web Service > Connect repo > Runtime: Docker
 # Health Check Path: /health
+#
+# Keep-alive: сервис сам пингует свой публичный адрес каждые 10 минут,
+# чтобы Render не усыплял его после 15 минут простоя.
+# RENDER_EXTERNAL_URL Render подставляет автоматически (адрес вида
+# https://quiet-garden.onrender.com) — его можно не задавать вручную.
 services:
   - type: web
     name: quiet-garden
@@ -15,6 +20,15 @@ services:
         value: production
       - key: PORT
         value: 3002
+      - key: KEEP_ALIVE_INTERVAL_MS
+        value: 600000
+      # Если хочешь задать адрес пинга вручную (обычно не нужно):
+      # - key: KEEP_ALIVE_URL
+      #   value: https://quiet-garden.onrender.com/health
     # ВАЖНО: на free-плане диск эфемерный — data/rooms.json будет теряться
     # при рестарте. Для сохранения нужен платный persistent disk
     # или внешнее хранилище.
+    #
+    # ВАЖНО: самопинг держит сервис, пока он не уснул. После перезапуска
+    # или долгого простоя поднимется внешний пингер (cron-job.org /
+    # UptimeRobot) на https://<домен>/health — каждые 10 минут.
