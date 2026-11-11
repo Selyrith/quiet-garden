@@ -64,6 +64,27 @@ docker run -p 3002:3002 -v qg-data:/app/data quiet-garden
 
 Health-check для всех платформ: `GET /health`
 
+## Где разместить (бесплатно)
+
+| Вариант | Плюсы | Минусы |
+|---|---|---|
+| **Render.com** | Без карты вообще, самый простой | Засыпает через 15 мин, диск эфемерный — сохранения сбрасываются |
+| **Northflank** | Не засыпает, можно примонтировать volume на `/app/data` | Нужна карта при регистрации |
+| **Koyeb** | Бесплатно, регион Frankfurt близко к РФ | Засыпает через 1 ч, volume недоступен на free |
+| **Oracle Cloud Always Free** | До 4 ядра ARM / 24 ГБ RAM навсегда, постоянный диск | Регистрация со списыванием ~$1 (возвращают), нужна рабочая карта |
+
+На Render: **New → Web Service** → Runtime **Docker** → Health Check Path `/health` → Plan **Free**.
+На Northflank: **Create → Service → Add from Dockerfile** → Health check `/health` → volume на `/app/data`.
+
+Для VPS: `docker run -p 3002:3002 -v qg-data:/app/data quiet-garden`, затем откройте порт 3002.
+
+Проверка после деплоя:
+
+```bash
+curl https://<ваш-домен>/health
+# {"ok":true,"uptime":42,"rooms":0}
+```
+
 ## Структура проекта
 
 ```
