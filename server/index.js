@@ -34,6 +34,7 @@ import {
   getProfile, createProfile, updateProfile, addToCollection, addCoins,
   addInventory, incrementStat, setProfileData, getAllProfiles
 } from './player-profiles.js';
+import { resolveNickname, isValidNickname } from '../shared/player.js';
 import { startKeepAliveFromEnv } from './keep-alive.js';
 import { findSpawnTile } from '../shared/room-players.js';
 
@@ -78,28 +79,43 @@ for (const [code, room] of savedRooms.entries()) {
 setInterval(() => saveRooms(rooms), SAVE_INTERVAL_MS);
 process.on('SIGINT', () => { saveRooms(rooms); process.exit(); });
 process.on('SIGTERM', () => { saveRooms(rooms); process.exit(); });
+// Ошибка в одном обработчике не должна ронять весь сервер —
+// иначе один сбой в profile-set уронил бы игру целиком.
 process.on('uncaughtException', (err) => {
   console.error('[fatal] uncaughtException:', err);
   saveRooms(rooms);
-  process.exit(1);
 });
 process.on('unhandledRejection', (err) => {
   console.error('[fatal] unhandledRejection:', err);
   saveRooms(rooms);
-  process.exit(1);
 });
 
 io.on('connection', (socket) => {
   const getPlayerId = () => socket.handshake.auth.playerId || socket.id;
   const pid = getPlayerId();
 
-  // Создаём/загружаем профиль игрока при подключении
-  const nickname = socket.handshake.auth.nickname || `Игрок_${pid.slice(-6)}`;
-  const profile = getProfile(pid) || createProfile(pid, nickname);
+  // Любой обработчик сокета оборачиваем: ошибка в одном не должна
+  // ронять сервер и отключать всех игроков.
+  const on = (event, handler) => {
+    socket.on(event, (...args) => {
+      try {
+        handler(...args);
+      } catch (err) {
+        console.error(`[socket] Ошибка в обработчике "${event}":`, err);
+      }
+    });
+  };
+
+  // Создаём/загружаем профиль игрока при подключении.
+  // Введённый ник важнее сохранённого — игрок может сменить имя при входе.
+  const handshakeNick = socket.handshake.auth.nickname || '';
+  const existingProfile = getProfile(pid);
+  const nickname = resolveNickname(existingProfile?.nickname, handshakeNick, pid);
+  const profile = existingProfile || createProfile(pid, nickname);
 
   setupGoalsHandlers(io, socket, { rooms, socketRoom });
 
-  socket.on('join-room', (payload = {}) => {
+  on('join-room', (payload = {}) => {
     if (socketRoom.has(pid)) leaveCurrentRoom(socket);
 
     const requested = (payload.roomCode || '').toUpperCase().trim();
@@ -144,8 +160,8 @@ io.on('connection', (socket) => {
     // Хост — первый игрок в комнате (создатель сада).
     if (!room.hostId) room.hostId = pid;
 
-    // Ник берём из профиля; он мог измениться после первого входа.
-    const roomNick = profile.nickname || nickname;
+    // Ник в комнате: введённый игроком (или из профиля).
+    const roomNick = resolveNickname(profile.nickname, handshakeNick, pid);
 
     // Каждого ставим на свою свободную клетку, иначе аватары
     // накладываются друг на друга и присоединившегося не видно.
@@ -218,7 +234,7 @@ io.on('connection', (socket) => {
     broadcastPlayerList(io, code, room);
   });
 
-  socket.on('gender-set', (data) => {
+  on('gender-set', (data) => {
     const code = socketRoom.get(pid);
     if (!code) return;
     const room = rooms.get(code);
@@ -231,7 +247,7 @@ io.on('connection', (socket) => {
     io.to(code).emit('gender-updated', { playerId: pid, gender });
   });
 
-  socket.on('role-set', (data) => {
+  on('role-set', (data) => {
     const code = socketRoom.get(pid);
     if (!code) return;
     const room = rooms.get(code);
@@ -244,7 +260,7 @@ io.on('connection', (socket) => {
     broadcastRoles(io, code, room);
   });
 
-  socket.on('emote', (data) => {
+  on('emote', (data) => {
     const code = socketRoom.get(pid);
     if (!code) return;
     const room = rooms.get(code);
@@ -252,7 +268,7 @@ io.on('connection', (socket) => {
     handleEmote(io, socket, room, code, data);
   });
 
-  socket.on('quick-message', (data) => {
+  on('quick-message', (data) => {
     const code = socketRoom.get(pid);
     if (!code) return;
     const room = rooms.get(code);
@@ -260,7 +276,7 @@ io.on('connection', (socket) => {
     handleQuickMessage(io, socket, room, code, data);
   });
 
-  socket.on('tile-action', (data) => {
+  on('tile-action', (data) => {
     const code = socketRoom.get(pid);
     if (!code) return;
     const room = rooms.get(code);
@@ -268,7 +284,7 @@ io.on('connection', (socket) => {
     handleTileAction(io, socket, room, code, data);
   });
 
-  socket.on('activity-action', (data) => {
+  on('activity-action', (data) => {
     const code = socketRoom.get(pid);
     if (!code) return;
     const room = rooms.get(code);
@@ -276,7 +292,7 @@ io.on('connection', (socket) => {
     handleActivityAction(io, socket, room, code, data);
   });
 
-  socket.on('upgrade-buy', (data) => {
+  on('upgrade-buy', (data) => {
     const code = socketRoom.get(pid);
     if (!code) return;
     const room = rooms.get(code);
@@ -284,7 +300,7 @@ io.on('connection', (socket) => {
     handleUpgradeBuy(io, socket, room, code, data);
   });
 
-  socket.on('buy-pack', (data) => {
+  on('buy-pack', (data) => {
     const code = socketRoom.get(pid);
     if (!code) return;
     const room = rooms.get(code);
@@ -292,7 +308,7 @@ io.on('connection', (socket) => {
     handleBuyPack(io, socket, room, code, data);
   });
 
-  socket.on('set-message', (data) => {
+  on('set-message', (data) => {
     const code = socketRoom.get(pid);
     if (!code) return;
     const room = rooms.get(code);
@@ -300,7 +316,7 @@ io.on('connection', (socket) => {
     handleSetMessage(io, socket, room, code, data);
   });
 
-  socket.on('pet-answer', (data) => {
+  on('pet-answer', (data) => {
     const code = socketRoom.get(pid);
     if (!code) return;
     const room = rooms.get(code);
@@ -308,7 +324,7 @@ io.on('connection', (socket) => {
     handlePetAnswer(io, socket, room, code, data);
   });
 
-  socket.on('profile-set', (data) => {
+  on('profile-set', (data) => {
     if (!data || typeof data !== 'object') return;
     const updates = {};
     if (typeof data.nickname === 'string' && isValidNickname(data.nickname)) {
@@ -326,12 +342,22 @@ io.on('connection', (socket) => {
     if (Object.keys(updates).length > 0) {
       const profile = updateProfile(pid, updates);
       if (profile) {
+        // Ник меняется и в комнате — иначе в списке игроков остаётся старый.
+        const code = socketRoom.get(pid);
+        if (code) {
+          const room = rooms.get(code);
+          const player = room?.players.get(pid);
+          if (room && player) {
+            player.nickname = profile.nickname;
+            broadcastPlayerList(io, code, room);
+          }
+        }
         socket.emit('profile-updated', { nickname: profile.nickname, avatarEmoji: profile.avatarEmoji });
       }
     }
   });
 
-  socket.on('profile-request', () => {
+  on('profile-request', () => {
     const profile = getProfile(pid);
     if (profile) {
       socket.emit('profile-data', {
@@ -347,12 +373,12 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('leave-room', () => {
+  on('leave-room', () => {
     const code = leaveCurrentRoom(socket);
     if (code) socket.emit('left-room', { code });
   });
 
-  socket.on('disconnect', () => leaveCurrentRoom(socket));
+  on('disconnect', () => leaveCurrentRoom(socket));
 });
 
 function leaveCurrentRoom(socket) {

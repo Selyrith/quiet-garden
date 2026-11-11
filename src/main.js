@@ -3,6 +3,7 @@ import { io } from 'socket.io-client';
 import GameScene from './scenes/GameScene.js';
 import PauseScene from './scenes/PauseScene.js';
 import { sound } from './audio/SoundManager.js';
+import { shouldAutoJoin, needsNickname, normalizeRoomCode, isValidRoomCode } from './join-flow.js';
 
 // В проде подключаемся к тому же хосту, что и страница (Socket.IO идёт по /socket.io).
 // VITE_SERVER_URL можно задать явно, если сервер вынесен на отдельный домен.
@@ -23,11 +24,30 @@ function getNickname() {
 }
 
 const playerId = getPlayerId();
+// Ник, введённый игроком. Отправляется серверу сразу после подключения.
+let pendingNickname = '';
 const socket = io(SERVER_URL, {
   auth: { playerId, nickname: getNickname() },
   autoConnect: false,
   transports: ['websocket', 'polling']
 });
+
+/**
+ * Передаёт ник серверу.
+ *
+ * socket.auth читается только при handshake, поэтому смену ника после
+ * подключения сервер не увидит. Нужен отдельный profile-set — именно он
+ * обновляет профиль и ник в комнате.
+ */
+function applyNickname(nickname) {
+  const nick = (nickname || '').trim();
+  if (!nick) return;
+  pendingNickname = nick;
+  socket.auth = { playerId, nickname: nick };
+  if (socket.connected) {
+    socket.emit('profile-set', { nickname: nick });
+  }
+}
 
 socket.on('connect_error', (err) => {
   console.error('[main] Socket connect_error:', err.message);
@@ -101,6 +121,13 @@ function enterGame(roomCode) {
 
 socket.on('connect', () => {
   console.log('[main] socket connected, hasJoinedThisSession:', hasJoinedThisSession, 'game:', !!game);
+
+  // Ник отправляем сразу после подключения и до входа в комнату —
+  // тогда сервер знает, как подписать игрока в списке комнаты.
+  if (pendingNickname) {
+    socket.emit('profile-set', { nickname: pendingNickname });
+  }
+
   if (!hasJoinedThisSession) return;
   if (!game) {
     // Первый вход: GameScene сам отправит join-room в create()
@@ -147,24 +174,34 @@ function initMenu() {
   const newSlot = document.createElement('div');
   newSlot.className = 'slot empty';
   newSlot.innerHTML = '<div class="slot-title">+ Новый сад</div>';
-  newSlot.addEventListener('click', () => enterGame(null));
+  newSlot.addEventListener('click', () => {
+    // Новый сад тоже требует ник — иначе игрока не узнать.
+    const nick = nickInput.value.trim();
+    if (needsNickname(nick)) {
+      showMenuError('Введите имя (минимум 2 символа)');
+      nickInput.focus();
+      return;
+    }
+    sessionStorage.setItem('playerNick', nick);
+    applyNickname(nick);
+    enterGame(null);
+  });
   slots.appendChild(newSlot);
 
   const doJoin = () => {
     const nick = nickInput.value.trim();
-    if (nick.length < 2) {
+    if (needsNickname(nick)) {
       showMenuError('Введите имя (минимум 2 символа)');
+      nickInput.focus();
       return;
     }
-    const code = (codeInput.value || '').trim().toUpperCase();
-    if (code.length > 0 && code.length < 4) {
+    const code = normalizeRoomCode(codeInput.value);
+    if (code.length > 0 && !isValidRoomCode(code)) {
       showMenuError('Код комнаты должен быть 4–6 символов');
       return;
     }
     sessionStorage.setItem('playerNick', nick);
-    // Обновляем auth на сокете перед подключением
-    try { socket.io.engine ? null : null; } catch {}
-    socket.auth = { playerId, nickname: nick };
+    applyNickname(nick);
     enterGame(code);
   };
 
@@ -177,11 +214,14 @@ function initMenu() {
     if (e.key === 'Enter') doJoin();
   });
 
+  // Код комнаты из ссылки подставляем в поле, но НЕ входим автоматически:
+  // сначала игрок должен ввести ник, иначе он будет анонимным.
   const params = new URLSearchParams(window.location.search);
-  const roomFromUrl = (params.get('room') || '').trim().toUpperCase();
+  const roomFromUrl = normalizeRoomCode(params.get('room'));
   if (roomFromUrl) {
     codeInput.value = roomFromUrl;
-    setTimeout(() => enterGame(roomFromUrl), 150);
+    showMenuError('Введите имя и нажмите «Войти»');
+    nickInput.focus();
   }
 }
 

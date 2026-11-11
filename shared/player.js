@@ -36,3 +36,25 @@ export function isValidNickname(nickname) {
   const trimmed = nickname.trim();
   return trimmed.length >= 2 && trimmed.length <= 20 && /^[a-zA-Zа-яА-ЯёЁ0-9 _-]+$/.test(trimmed);
 }
+
+/**
+ * Определяет, какой ник использовать игроку.
+ *
+ * Приоритет: введённый сейчас ник важнее старого ника из профиля.
+ * Иначе игрок, заходивший раньше под одним ником, не смог бы сменить
+ * имя при входе — и в списке оставался бы старый.
+ *
+ * @param {string} profileNick ник из профиля
+ * @param {string} inputNick ник, введённый игроком сейчас
+ * @param {string} playerId для заглушки, если ников нет
+ */
+export function resolveNickname(profileNick, inputNick, playerId = '') {
+  const input = typeof inputNick === 'string' ? inputNick.trim() : '';
+  if (input && isValidNickname(input)) return input;
+
+  const saved = typeof profileNick === 'string' ? profileNick.trim() : '';
+  if (saved) return saved;
+
+  const suffix = String(playerId || '').slice(-6);
+  return suffix ? `Игрок_${suffix}` : 'Игрок';
+}
