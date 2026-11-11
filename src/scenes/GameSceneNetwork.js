@@ -1,5 +1,6 @@
 import { getRole } from '../../shared/roles.js';
 import { PackOpeningOverlay } from '../ui/PackOpeningOverlay.js';
+import { updateAvatarLabel } from '../ui/PlayerAvatar.js';
 
 export const GameSceneNetwork = {
   setupNetworking() {
@@ -20,7 +21,7 @@ export const GameSceneNetwork = {
     });
 
     s.on('initial-state', (data) => {
-      const { garden, coins, collection, inventory, activities, upgrades, goals, roles, players, team, world, totalPlants, sinceLastSeen, pet } = data;
+      const { garden, coins, collection, inventory, activities, upgrades, goals, roles, players, playerList, hostId, team, world, totalPlants, sinceLastSeen, pet } = data;
       this.updateCoins(coins ?? 0);
       this.totalPlants = totalPlants ?? 300;
       this.collection = new Set(collection ?? []);
@@ -29,6 +30,12 @@ export const GameSceneNetwork = {
       this.goals = goals ?? null;
       this.roles = roles ?? {};
       this.players = players ?? [];
+      // Подробный список (с никами и хостом). Если сервер его не прислал —
+      // собираем из id, чтобы HUD не был пустым.
+      this.playerList = Array.isArray(playerList) && playerList.length
+        ? playerList
+        : (this.players || []).map((id) => ({ id, nickname: 'Игрок', isHost: id === hostId }));
+      this.hostId = hostId ?? null;
       this.team = team ?? null;
       this.myRole = this.roles[this.myPlayerId] || null;
 
@@ -69,6 +76,11 @@ export const GameSceneNetwork = {
           this.playerGenders.set(p.id, p.gender || 'male');
           this.ensureAvatar(p.id, this.roles[p.id], p.gender || 'male');
         }
+      }
+      // Подписи (ники) обновляем после создания аватаров.
+      for (const p of this.playerList || []) {
+        const av = this.avatars.get(p.id);
+        if (av) updateAvatarLabel(av, p.nickname, !!p.isHost);
       }
       if (data.activeJobs) {
         for (const j of data.activeJobs) {
@@ -296,7 +308,36 @@ export const GameSceneNetwork = {
       this.sound.error();
       this.showToast(reason);
     });
-    s.on('player-list', ({ players }) => { this.players = players || []; this.updatePlayerList(); });
+    s.on('player-list', ({ players, hostId }) => {
+      // Сервер шлёт список объектов: {id, nickname, x, y, gender, isHost}.
+      // Старый формат (массив id) тоже поддерживаем.
+      const raw = Array.isArray(players) ? players : [];
+      const known = new Map((this.playerList || []).map((p) => [p.id, p]));
+      this.playerList = raw.map((entry) => {
+        if (typeof entry === 'string') {
+          return { id: entry, nickname: known.get(entry)?.nickname || 'Игрок', isHost: entry === (hostId ?? this.hostId) };
+        }
+        return entry;
+      });
+      this.players = this.playerList.map((p) => p.id);
+      if (hostId !== undefined) this.hostId = hostId ?? null;
+      this.updatePlayerList();
+      // Ники и позиции приходят вместе со списком: новый игрок должен
+      // появиться у всех сразу, а не только у того, кто вошёл.
+      for (const p of this.playerList || []) {
+        if (p.x != null && p.y != null) {
+          const knownPos = this.playerPositions.get(p.id);
+          if (!knownPos || knownPos.x !== p.x || knownPos.y !== p.y) {
+            this.playerPositions.set(p.id, { x: p.x, y: p.y });
+            const av = this.ensureAvatar(p.id, this.roles[p.id], this.playerGenders.get(p.id) || p.gender || 'male');
+            const stand = this.avatarStandAt(p.x, p.y);
+            av.setPosition(stand.x, stand.y);
+          }
+        }
+        const av = this.avatars.get(p.id);
+        if (av) updateAvatarLabel(av, p.nickname, !!p.isHost);
+      }
+    });
 
     // Питомец: состояние обновлено
     s.on('pet-state-updated', ({ pet }) => {

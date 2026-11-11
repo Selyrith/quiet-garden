@@ -6,6 +6,7 @@ import { createGoalsState, serializeGoals } from './goals.js';
 import { createTeamState, serializeTeam } from '../shared/team-goals.js';
 import { tickWorld } from './world.js';
 import { createPetState, updatePetMovement, getPetState } from './pet-system.js';
+import { buildPlayerEntry, buildPlayerList } from '../shared/room-players.js';
 
 export const rooms = new Map();
 export const socketRoom = new Map();
@@ -23,6 +24,7 @@ export function generateRoomCode() {
 export function createRoom(code) {
   const room = {
     players: new Map(),
+    hostId: null,
     garden: createEmptyGarden(),
     coins: 0,
     collection: new Set(),
@@ -74,7 +76,25 @@ export function serializeActivities(room) {
 }
 
 export function broadcastPlayerList(io, code, room) {
-  io.to(code).emit('player-list', { players: Array.from(room.players.keys()) });
+  io.to(code).emit('player-list', {
+    players: serializePlayers(room),
+    hostId: room.hostId || null,
+  });
+}
+
+/**
+ * Публичный список игроков комнаты: ник, позиция, флаг хоста.
+ * Хост всегда идёт первым.
+ */
+export function serializePlayers(room) {
+  const entries = Array.from(room.players.entries()).map(([pid, p]) => buildPlayerEntry({
+    playerId: pid,
+    nickname: p?.nickname,
+    tileKey: `${p?.x ?? 1},${p?.y ?? 1}`,
+    gender: p?.gender || 'male',
+    isHost: room.hostId === pid,
+  }));
+  return buildPlayerList(entries);
 }
 
 export function broadcastCoins(io, code, room) {

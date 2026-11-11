@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import {
   rooms, socketRoom, generateRoomCode, createRoom,
-  serializeGarden, serializeActivities,
+  serializeGarden, serializeActivities, serializePlayers,
   broadcastPlayerList, broadcastRoles,
   startRoomTick, scheduleSpawn, stopRoomTimers,
   getTeamGrowthBonus
@@ -35,6 +35,7 @@ import {
   addInventory, incrementStat, setProfileData, getAllProfiles
 } from './player-profiles.js';
 import { startKeepAliveFromEnv } from './keep-alive.js';
+import { findSpawnTile } from '../shared/room-players.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -139,7 +140,23 @@ io.on('connection', (socket) => {
 
     socket.join(code);
     socketRoom.set(pid, code);
-    room.players.set(pid, { x: 1, y: 1, gender: 'male' });
+
+    // Хост — первый игрок в комнате (создатель сада).
+    if (!room.hostId) room.hostId = pid;
+
+    // Ник берём из профиля; он мог измениться после первого входа.
+    const roomNick = profile.nickname || nickname;
+
+    // Каждого ставим на свою свободную клетку, иначе аватары
+    // накладываются друг на друга и присоединившегося не видно.
+    const occupied = Array.from(room.players.values()).map((p) => `${p.x},${p.y}`);
+    const [spawnX, spawnY] = findSpawnTile(occupied).split(',').map(Number);
+    room.players.set(pid, {
+      x: spawnX,
+      y: spawnY,
+      gender: 'male',
+      nickname: roomNick,
+    });
 
     const world = getWorldState();
     socket.emit('room-code', { roomCode: code });
@@ -174,6 +191,8 @@ io.on('connection', (socket) => {
       goals: serializeGoals(room, pid),
       roles: Object.fromEntries(room.roles),
       players: Array.from(room.players.keys()),
+      playerList: serializePlayers(room),
+      hostId: room.hostId || null,
       playerPositions: Array.from(room.players.entries()).map(([id, p]) => ({ id, x: p.x, y: p.y, gender: p.gender || 'male' })),
       activeJobs: Array.from(room.playerJobs.entries()).map(([id, j]) => ({
         playerId: id, action: j.action, endsAt: j.endsAt,

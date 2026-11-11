@@ -79,7 +79,10 @@ export function handleTileAction(io, socket, room, code, data) {
     room.playerJobs.delete(playerId);
     const ok = applyTileEffect(io, socket, room, code, { tileX, tileY, action, seedId });
     if (ok) {
-      room.players.set(playerId, { x: tileX, y: tileY });
+      // Обновляем только координаты — ник, пол и прочие поля записи
+      // игрока должны сохраниться (иначе теряется ник в списке).
+      const cur = room.players.get(playerId) || {};
+      room.players.set(playerId, { ...cur, x: tileX, y: tileY });
       io.to(code).emit('action-completed', { playerId, tileX, tileY, action });
     }
     // при !ok — action-rejected уже отправлен из applyTileEffect, позиция не меняется

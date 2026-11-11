@@ -14,7 +14,7 @@ import { createTopBar } from '../ui/HudTopBar.js';
 import { createTeamGoalBar } from '../ui/HudTeamBar.js';
 import { createEmotesBar } from '../ui/HudEmotesBar.js';
 import { InventoryBar } from '../ui/InventoryBar.js';
-import { createAvatar, tintAvatar } from '../ui/PlayerAvatar.js';
+import { createAvatar, tintAvatar, updateAvatarLabel } from '../ui/PlayerAvatar.js';
 import { avatarStandPosition } from '../ui/avatar-layout.js';
 import { generateAllPlantTextures } from '../ui/PlantTextureFactory.js';
 import { escapeHtml } from '../ui/escapeHtml.js';
@@ -1112,7 +1112,9 @@ export default class GameScene extends Phaser.Scene {
   ensureAvatar(playerId, roleId, genderId) {
     let av = this.avatars.get(playerId);
     if (!av) {
-      av = createAvatar(this, playerId, genderId, roleId, this.tileSize);
+      const info = this.playerInfo?.(playerId);
+      av = createAvatar(this, playerId, genderId, roleId, this.tileSize, info?.nickname || '', !!info?.isHost);
+      av.tileSize = this.tileSize;
       this.avatarLayer.add(av);
       this.avatars.set(playerId, av);
     }
@@ -1120,6 +1122,14 @@ export default class GameScene extends Phaser.Scene {
     const stand = this.avatarStandAt(pos.x, pos.y);
     av.setPosition(stand.x, stand.y);
     return av;
+  }
+
+  /**
+   * Данные об игроке из списка комнаты (ник, хост).
+   */
+  playerInfo(playerId) {
+    if (!this.playerList) return null;
+    return this.playerList.find((p) => p && p.id === playerId) || null;
   }
 
   /**

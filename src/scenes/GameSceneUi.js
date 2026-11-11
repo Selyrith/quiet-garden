@@ -60,7 +60,10 @@ export const GameSceneUi = {
 
   updatePlayerList() {
     if (!this.playerListText) return;
-    updatePlayerList(this.playerListText, this.players || [], this.roles || {}, this.myPlayerId);
+    const list = this.playerList && this.playerList.length
+      ? this.playerList
+      : (this.players || []).map((id) => ({ id, nickname: 'Игрок', isHost: id === this.hostId }));
+    updatePlayerList(this.playerListText, list, this.roles || {}, this.myPlayerId);
   },
 
   updateTeamBar() {
