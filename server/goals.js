@@ -77,7 +77,7 @@ export function ensureQuests(room, playerId) {
 export function trackEvent(room, playerId, event, amount = 1) {
   const goals = getPlayerGoals(room, playerId);
   ensureQuests(room, playerId);
-  
+
   if (event === 'plant') {
     goals.plantTotal = (goals.plantTotal || 0) + amount;
     goals.dailyActions = (goals.dailyActions || 0) + amount;
@@ -89,8 +89,21 @@ export function trackEvent(room, playerId, event, amount = 1) {
   if (event === 'harvest') goals.harvestTotal = (goals.harvestTotal || 0) + amount;
   if (event === 'activity') goals.activityTotal = (goals.activityTotal || 0) + amount;
   if (event === 'upgrade') goals.upgradeTotal = (goals.upgradeTotal || 0) + amount;
-  if (event === 'newSpecies') goals.speciesCount = (goals.speciesCount || 0) + amount;
-  
+  if (event === 'newSpecies') {
+    // ВАЖНО: раньше здесь стояло goals.speciesCount += amount, и этот счётчик
+    // расходился с room.collection.size, по которому считает дерево прогресса
+    // и который показывает UI. Игрок видел «25 видов» в книге, а узел дерева
+    // требовал «25» по другой цифре — награда не удалась.
+    // Теперь поддерживаем оба: локальный счётчик и, если комната доступна,
+    // синхронизируем его с реальным размером коллекции комнаты.
+    goals.speciesCount = (goals.speciesCount || 0) + amount;
+    if (room && room.collection && typeof room.collection.size === 'number') {
+      // берём максимум: коллекция — источник истины, локальный счётчик
+      // мог быть создан до появления collection
+      goals.speciesCount = Math.max(goals.speciesCount, room.collection.size);
+    }
+  }
+
   for (const q of goals.quests) {
     if (q.claimed) continue;
     if (q.event !== event) continue;
@@ -122,7 +135,11 @@ export function serializeGoals(room, playerId) {
       plant: goals.plantTotal || 0,
       activity: goals.activityTotal || 0,
       upgrade: goals.upgradeTotal || 0,
-      speciesCount: room.collection ? room.collection.size : 0
+      // Коллекция комнаты — источник истины; локальный счётчик мог отстать.
+      speciesCount: Math.max(
+        goals.speciesCount || 0,
+        room.collection ? room.collection.size : 0
+      )
     }
   };
 }

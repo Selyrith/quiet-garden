@@ -95,12 +95,20 @@ export function setupGoalsHandlers(io, socket, deps) {
       return;
     }
 
-    const checkValue = goals[node.check] != null
-      ? goals[node.check]
-      : (node.check === 'speciesCount' ? room.collection.size : 0);
+    // Единый источник истины по «открытым видам» — размер коллекции комнаты.
+    // Раньше code читал goals.speciesCount, а UI/книга показывали
+    // room.collection.size, и две цифры расходились: узел дерева «25 видов»
+    // не открывался, хотя книга показывала 25.
+    let checkValue;
+    if (node.check === 'speciesCount') {
+      const fromCollection = room.collection ? room.collection.size : 0;
+      checkValue = Math.max(goals.speciesCount || 0, fromCollection);
+    } else {
+      checkValue = goals[node.check] != null ? goals[node.check] : 0;
+    }
 
     if (checkValue < node.target) {
-      socket.emit('tree-result', { ok: false, message: 'Условие не выполнено' });
+      socket.emit('tree-result', { ok: false, message: `Условие не выполнено (${checkValue}/${node.target})` });
       return;
     }
 
