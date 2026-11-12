@@ -53,6 +53,12 @@ export const GameSceneNetwork = {
 
       this.updateCollectionText();
       this.updatePlayerList();
+      // Автовыбор первого доступного семени, чтобы «Посадить» работало сразу.
+      const invKeys = Object.keys(this.inventory || {}).map(Number);
+      if ((this.selectedSeedId == null || !this.inventory[this.selectedSeedId]) && invKeys.length > 0) {
+        const first = invKeys.sort((a, b) => a - b)[0];
+        this.selectedSeedId = first;
+      }
       if (this.inventoryBar) this.inventoryBar.update(this.inventory, this.selectedSeedId);
 
       if (world) this.applyWorld(world);

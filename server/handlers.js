@@ -110,13 +110,19 @@ export function applyTileEffect(io, socket, room, code, data) {
       socket.emit('action-rejected', { key, action, reason: 'Грядка уже занята' });
       return false;
     }
-    if (seedId == null || !room.inventory[seedId] || room.inventory[seedId] <= 0) {
+    // Нормализуем ключ инвентаря (число/строка) — сервер и клиент могут присылать разный тип.
+    const rawSeedId = seedId;
+    const invKey = (room.inventory[rawSeedId] != null) ? rawSeedId
+      : (room.inventory[Number(rawSeedId)] != null) ? Number(rawSeedId)
+      : (room.inventory[String(rawSeedId)] != null) ? String(rawSeedId)
+      : null;
+    if (rawSeedId == null || invKey == null || room.inventory[invKey] <= 0) {
       socket.emit('action-rejected', { key, action, reason: 'У вас нет такого семени!' });
       return false;
     }
 
-    room.inventory[seedId]--;
-    if (room.inventory[seedId] <= 0) delete room.inventory[seedId];
+    room.inventory[invKey]--;
+    if (room.inventory[invKey] <= 0) delete room.inventory[invKey];
     broadcastInventory(io, code, room);
 
     const world = getWorldState();
@@ -125,7 +131,7 @@ export function applyTileEffect(io, socket, room, code, data) {
     const mutationIndex = getRandomMutation(world, getLuckBonus(room.upgrades));
 
     const result = plantTile(room.garden, key, {
-      seed: seedId,
+      seed: Number(seedId),
       luckBonus: getLuckBonus(room.upgrades) + (world.season.luckBonus || 0),
       growthBonus: getGrowthBonus(room.upgrades) + roleBonus.growth + (1 - 1 / worldMult),
       mutationIndex
