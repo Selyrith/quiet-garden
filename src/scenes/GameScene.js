@@ -254,6 +254,7 @@ export default class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(DS.depth.hint);
 
     GameSceneUi.createToolButtons.call(this);
+    this.selectTool = GameSceneUi.selectTool.bind(this);
 
     this.inventoryBar = new InventoryBar(this, this.scale.height - 60);
     this.inventoryBar.container.setVisible(false);
