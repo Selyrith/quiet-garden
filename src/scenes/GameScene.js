@@ -199,11 +199,11 @@ export default class GameScene extends Phaser.Scene {
 
     this.teamBar = createTeamGoalBar(this);
     if (this.teamBar && this.teamBar.container) {
-      this.teamBar.container.setPosition(this.scale.width / 2, 120);
+      this.teamBar.container.setPosition(this.scale.width / 2, 100);
     }
 
     // Всплывающие уведомления (под teamBar)
-    this.toastText = this.add.text(this.scale.width / 2, 200, '', {
+    this.toastText = this.add.text(this.scale.width / 2, Math.min(200, this.gridOrigin.y - 60), '', {
       fontSize: `${DS.font.size.sm}px`,
       color: DS.colors.brand.gold,
       fontFamily: DS.font.family.base,
@@ -215,7 +215,7 @@ export default class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(DS.depth.toasts).setAlpha(0);
 
     // Список игроков (левый верхний угол, под HUD)
-    this.playerListText = this.add.text(10, 95, '', {
+    this.playerListText = this.add.text(10, 128, '', {
       fontSize: `${DS.font.size.xs}px`, color: DS.colors.text.muted, fontFamily: DS.font.family.base, fontWeight: DS.font.weight.medium
     }).setDepth(DS.depth.hud + 1);
 
@@ -1129,15 +1129,17 @@ export default class GameScene extends Phaser.Scene {
       if (hintY > h - 90) hintY = h - 90;
       this.hintText.setPosition(w / 2, hintY);
     }
-    if (this.toastText) this.toastText.setPosition(w / 2, 200);
+    if (this.toastText) this.toastText.setPosition(w / 2, Math.min(200, this.gridOrigin.y - 60));
     if (this.emoteBtn) this.emoteBtn.setPosition(w - 30, h - 220);
-    if (this.playerListText) this.playerListText.setPosition(10, 95);
+    if (this.watchBtn) this.watchBtn.setPosition(w - 30, h - 280);
+    if (this.petBtn)   this.petBtn.setPosition(w - 30, h - 340);
+    if (this.playerListText) this.playerListText.setPosition(10, 128);
 
     if (this.inventoryBar) this.inventoryBar.resize(h - 60);
     if (this.weather && this.weather.resize) this.weather.resize();
-    
+
     if (this.teamBar && this.teamBar.container) {
-      this.teamBar.container.setPosition(w / 2, 120);
+      this.teamBar.container.setPosition(w / 2, 100);
     }
 
     if (this.signpostBg) {
@@ -1167,7 +1169,6 @@ export default class GameScene extends Phaser.Scene {
         if (!btn.container) return;
         const x = startX + i * (btnSize + gap);
         btn.container.setPosition(x, y);
-        if (btn.hit) btn.hit.setPosition(x, y);
         i++;
       });
     }
