@@ -23,7 +23,9 @@ export const GameSceneUi = {
     const gap = 8;
     const totalW = 4 * btnSize + 3 * gap;
     const startX = W / 2 - totalW / 2 + btnSize / 2;
-    const y = this.scale.height - 80; // выше инвентаря
+    // Адаптивное позиционирование: на узких экранах выше, чтобы не наезжать на инвентарь
+    const isMobile = W < 480;
+    const y = this.scale.height - (isMobile ? 110 : 80); // выше инвентаря
 
     this.toolButtons = new Map();
 

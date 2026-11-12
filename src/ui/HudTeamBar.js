@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
+import { DS } from './DesignSystem.js';
 
 export function createTeamGoalBar(scene) {
-  const container = scene.add.container(0, 0).setDepth(105);
+  const container = scene.add.container(0, 0).setDepth(DS.depth.hud + 5);
   const bg = scene.add.rectangle(0, 0, 300, 26, 0x5c4a3a, 0.9).setOrigin(0.5).setStrokeStyle(1, 0x8e7b63);
   const barBg = scene.add.rectangle(-140, 0, 280, 14, 0x8e7b63, 0.4).setOrigin(0, 0.5);
   const bar = scene.add.rectangle(-140, 0, 0, 14, 0xd8a494).setOrigin(0, 0.5);

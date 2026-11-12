@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { DS, drawRoundedRect, drawShadowedRect, createButtonStyle } from './DesignSystem.js';
 
 export class WeatherEffects {
   constructor(scene) {
@@ -12,11 +13,12 @@ export class WeatherEffects {
     this.currentPhase = null;
 
     // 1. Оверлей для погоды (дождь = темно-синий, туман = серый)
+    // Используем DS.depth.particles + 1 = 51 (над партиклами, под HUD)
     this.weatherTint = scene.add.rectangle(0, 0, this.cam.width, this.cam.height, 0x000000, 0)
-      .setOrigin(0).setDepth(81);
+      .setOrigin(0).setDepth(DS.depth.particles + 1);
 
     // Лужи/рябь при дожде (лёгкая графика, без postFX)
-    this.puddles = scene.add.graphics().setDepth(82);
+    this.puddles = scene.add.graphics().setDepth(DS.depth.particles + 2);
     this._puddleT = 0;
 
     // 2. ДОЖДЬ
@@ -30,7 +32,7 @@ export class WeatherEffects {
       quantity: 3,
       frequency: 15,
       blendMode: 'NORMAL'
-    }).setDepth(190).setAlpha(0);
+    }).setDepth(DS.depth.particles + 3).setAlpha(0);
 
     // 3. ТУМАН
     this.fog = scene.add.particles(0, 0, 'fog_cloud', {
@@ -44,7 +46,7 @@ export class WeatherEffects {
       quantity: 1,
       frequency: 800,
       blendMode: 'NORMAL'
-    }).setDepth(85).setAlpha(0);
+    }).setDepth(DS.depth.particles + 4).setAlpha(0);
 
     // 4. СНЕГ (Зима)
     this.snow = scene.add.particles(0, 0, 'snowflake', {
@@ -57,7 +59,7 @@ export class WeatherEffects {
       alpha: { start: 0.8, end: 0.1 },
       quantity: 1,
       frequency: 100
-    }).setDepth(200).setAlpha(0);
+    }).setDepth(DS.depth.particles + 5).setAlpha(0);
 
     // 5. СВЕТЛЯЧКИ (Ночь)
     this.fireflies = scene.add.particles(0, 0, 'firefly', {
@@ -71,7 +73,7 @@ export class WeatherEffects {
       quantity: 1,
       frequency: 1500,
       blendMode: 'ADD'
-    }).setDepth(90).setAlpha(0);
+    }).setDepth(DS.depth.particles + 6).setAlpha(0);
   }
 
   createTextures() {
