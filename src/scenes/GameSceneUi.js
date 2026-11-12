@@ -123,11 +123,11 @@ export const GameSceneUi = {
     }
     this.selectedTool = toolId;
 
+    // Показываем ВСЕ инструменты (не только активный), подсвечиваем активный
     this.toolButtons.forEach(({ container, bg, icon, label, cfg, drawBtn }, id) => {
       const isActive = id === toolId;
       
-      // Показываем контейнер выбранного инструмента, скрываем остальные
-      container.setVisible(true);
+      container.setVisible(true); // все 4 кнопки всегда видны
       
       // Сброс hover-масштаба
       bg.setScale(1);
