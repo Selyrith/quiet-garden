@@ -1311,6 +1311,11 @@ export default class GameScene extends Phaser.Scene {
     const g = this.teamTree;
     g.clear();
 
+    if (this.treePulseTween) {
+      try { this.treePulseTween.stop(); } catch {}
+      this.treePulseTween = null;
+    }
+
     const totalSize = this.tileSize * 8;
     const gridRight = this.gridOrigin.x + totalSize;
     const spaceOnRight = this.scale.width - gridRight;
@@ -1324,6 +1329,7 @@ export default class GameScene extends Phaser.Scene {
       if (this.treeHit) {
         this.treeHit.setPosition(x, baseY - 50);
         this.treeHit.setSize(80, 120);
+        this.treeHit.input.hitArea.setSize(this.treeHit.width, this.treeHit.height);
       }
     } else {
       const iconX = this.scale.width - 32;
@@ -1367,6 +1373,7 @@ export default class GameScene extends Phaser.Scene {
       if (this.treeHit) {
         this.treeHit.setPosition(iconX, iconY + 5);
         this.treeHit.setSize(56, 56);
+        this.treeHit.input.hitArea.setSize(this.treeHit.width, this.treeHit.height);
       }
       
       // Пульсация если прогресс достиг порога
