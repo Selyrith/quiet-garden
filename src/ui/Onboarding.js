@@ -35,9 +35,14 @@ export class Onboarding {
         padding: { x: 12, y: 6 }, fontStyle: 'bold' }).setOrigin(0.5).setDepth(400);
     } else if (n === 3) {
       // Подсветка кнопки "Полить" — unified color pulse
-      const waterBtn = scene.toolButtons.get('water');
-      if (waterBtn && waterBtn.gfx) {
-        this.pulse = scene.add.circle(waterBtn.x, waterBtn.y, 40, 0xd8a494, 0.4).setDepth(149);
+      // ВАЖНО: GameSceneUi.createToolButtons кладёт запись вида
+      // { container, bg, icon, label, hit, cfg, drawBtn } — нет .gfx/.x.
+      // Раньше проверка `waterBtn.gfx` всегда была false, и пульс не рисовался.
+      const waterBtn = scene.toolButtons && scene.toolButtons.get('water');
+      const container = waterBtn && waterBtn.container;
+      if (container) {
+        this.pulse = scene.add.circle(0, 0, 40, 0xd8a494, 0.4).setDepth(149);
+        container.add(this.pulse);
         scene.tweens.add({ targets: this.pulse, scale: { from: 0.9, to: 1.2 }, duration: 800, yoyo: true, repeat: -1 });
       }
       this.hint = scene.add.text(scene.scale.width / 2, scene.scale.height - 150,

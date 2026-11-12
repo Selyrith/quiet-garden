@@ -42,3 +42,24 @@ export function getSynergyNeighborReward(harvestPrice = 10) {
 // gardenRowsBonus: expand to include adjacent-plot bonuses
 export const ADJACENT_BONUS_MULT = 0.15; // 15% extra for adjacent watered plots
 export const MIN_ADJACENT_FOR_BONUS = 1;
+
+/**
+ * Награда за узел дерева прогресса «15 активностей».
+ *
+ * Раньше узел писал в room.gardenRowsBonus, но это поле никто не читал —
+ * игрок получал пустую награду. Теперь каждый купленный «ряд грядок»
+ * даёт постоянный бонус к сбору (он виден в монетах сразу).
+ *
+ * 1 ряд = +5% к цене собранного урожая. База сбрасывается при сбросе
+ * комнаты, как и остальные постоянные бонусы.
+ */
+export const GARDEN_ROW_INCOME_PER_LEVEL = 0.05;
+export const GARDEN_ROW_INCOME_MAX = 0.30; // потолок, чтобы не ломать экономику
+
+export function getGardenRowIncomeBonus(gardenRowsBonus = 0) {
+  const levels = Math.max(0, Math.floor(Number(gardenRowsBonus) || 0));
+  const bonus = Math.min(GARDEN_ROW_INCOME_MAX, levels * GARDEN_ROW_INCOME_PER_LEVEL);
+  // Округляем до 4 знаков: 3 * 0.05 в IEEE-754 даёт 0.15000000000000002,
+  // что ломает строгие сравнения в тестах и точность отображения в UI.
+  return Math.round(bonus * 10000) / 10000;
+}

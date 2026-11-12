@@ -17,7 +17,7 @@ import { aggregateRoleBonuses } from '../shared/roles.js';
 import { getMutation, getRandomMutation } from '../shared/mutations.js';
 import { PACKS, rollPack } from '../shared/packs.js';
 import { getPlant } from '../shared/plants.js';
-import { ACTION_DURATION, HARVEST_MUTATION_RETURN_CHANCE, SEED_SELL_BACK_RATIO, getNextTreeLevelAt, getSeedSellPrice, getSynergyNeighborReward } from '../shared/balance.js';
+import { ACTION_DURATION, HARVEST_MUTATION_RETURN_CHANCE, SEED_SELL_BACK_RATIO, getNextTreeLevelAt, getSeedSellPrice, getSynergyNeighborReward, getGardenRowIncomeBonus } from '../shared/balance.js';
 import {
   addToCollection, addCoins, addInventory, incrementStat
 } from './player-profiles.js';
@@ -178,7 +178,8 @@ export function applyTileEffect(io, socket, room, code, data) {
     const world = getWorldState();
     const incomeBonus = getIncomeBonus(room.upgrades) + (room.incomeBonusPermanent || 0) +
                         (world.season.incomeBonus || 0) + (world.season.priceBonus || 0) +
-                        roleBonus.income;
+                        roleBonus.income +
+                        getGardenRowIncomeBonus(room.gardenRowsBonus);
 
     let basePrice = result.price;
     harvestedSeed = result.seed;
