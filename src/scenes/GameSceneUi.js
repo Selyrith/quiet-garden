@@ -8,6 +8,8 @@ import { SettingsOverlay } from '../ui/SettingsOverlay.js';
 import { updateTeamGoalBar } from '../ui/HudTeamBar.js';
 import { updatePlayerList } from '../ui/PlayerList.js';
 import { DS, drawRoundedRect, drawShadowedRect, createButtonStyle } from '../ui/DesignSystem.js';
+import { TOOLS } from './GameSceneActions.js';
+import { rowCenters } from '../ui/Layout.js';
 
 const TOOL_CONFIG = {
   plant:   { icon: '🌱', label: 'Посадка', color: DS.colors.tools.plant },
@@ -18,19 +20,17 @@ const TOOL_CONFIG = {
 
 export const GameSceneUi = {
   createToolButtons() {
-    const W = this.scale.width;
-    const btnSize = 56;
-    const gap = 8;
-    const totalW = 4 * btnSize + 3 * gap;
-    const startX = W / 2 - totalW / 2 + btnSize / 2;
-    // Адаптивное позиционирование: на узких экранах выше, чтобы не наезжать на инвентарь
-    const isMobile = W < 480;
-    const y = this.scale.height - (isMobile ? 110 : 80); // выше инвентаря
+    // Геометрия — только из единой раскладки: никаких height-130 / height-80.
+    const L = this.layout;
+    const btnSize = L.toolbar.size;
+    const gap = L.toolbar.gap;
+    const y = L.toolbar.y;
+    const centers = rowCenters(TOOLS.length, L.w / 2, y, btnSize, gap);
 
     this.toolButtons = new Map();
 
     Object.entries(TOOL_CONFIG).forEach(([id, cfg], i) => {
-      const x = startX + i * (btnSize + gap);
+      const x = centers[i].x;
       const container = this.add.container(x, y).setDepth(DS.depth.toolbar);
 
       // Тень
@@ -114,8 +114,8 @@ export const GameSceneUi = {
       this.toolButtons.set(id, { container, bg, icon, label, hit, cfg, drawBtn });
     });
 
-    // Изначально скрываем инструменты (показываем при выборе 'plant')
-    this.toolButtons.forEach(({ container }) => container.setVisible(false));
+    // Показываем все инструменты сразу
+    this.toolButtons.forEach(({ container }) => container.setVisible(true));
   },
 
   selectTool(toolId) {
@@ -137,7 +137,7 @@ export const GameSceneUi = {
       
       if (label) {
         label.setColor(isActive ? cfg.color.label : DS.colors.text.muted);
-        label.setFontWeight(isActive ? DS.font.weight.bold : DS.font.weight.medium);
+        label.setFontStyle(isActive ? 'bold' : 'normal');
       }
     });
 

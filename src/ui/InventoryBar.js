@@ -5,9 +5,17 @@ import { getSeedSellPrice } from '../../shared/balance.js';
 import { DS, drawRoundedRect, drawShadowedRect, createButtonStyle } from './DesignSystem.js';
 
 export class InventoryBar {
-  constructor(scene, y) {
+  /**
+   * @param {Phaser.Scene} scene
+   * @param {object} layout результат computeLayout() — единственный источник координат
+   */
+  constructor(scene, layout) {
     this.scene = scene;
-    this.container = scene.add.container(0, y).setDepth(DS.depth.inventory);
+    // Совместимость: раньше сюда передавали число (y). Старые вызовы не должны падать.
+    this.layout = (layout && typeof layout === 'object')
+      ? layout
+      : { w: scene.scale.width, h: scene.scale.height, inventory: { y: layout ?? scene.scale.height - 60, h: 72 } };
+    this.container = scene.add.container(0, this.layout.inventory.y).setDepth(DS.depth.inventory);
     this.bg = scene.add.graphics();
     this.drawShelf();
     this.container.add(this.bg);
@@ -20,9 +28,19 @@ export class InventoryBar {
     this.hintText = null;
   }
 
+  /** высота полки: 72 на обычных экранах, 64 на маленьких (из Layout) */
+  get shelfH() {
+    return this.layout.inventory.h;
+  }
+
+  /** локальный Y центра слота: слот 56 px стоит у верха полки, низ — под тень */
+  get slotTopY() {
+    return 28;
+  }
+
   drawShelf() {
-    const w = this.scene.scale.width;
-    const h = 72; // чуть выше под тень
+    const w = this.layout.w;
+    const h = this.shelfH;
     this.bg.clear();
 
     // Тень под полкой (layered)
@@ -95,7 +113,7 @@ export class InventoryBar {
       const x = startX + i * spacing;
 
       const isActive = seedId === activeSeedId;
-      this.createSeedSlot(x, 28, seedId, plant, count, isActive);
+      this.createSeedSlot(x, this.slotTopY, seedId, plant, count, isActive);
     });
   }
 
@@ -378,7 +396,12 @@ export class InventoryBar {
     }
   }
 
-  resize(y) {
+  resize(layout) {
+    // Принимает layout (или число — старый контракт), а не «магическую» y.
+    this.layout = (layout && typeof layout === 'object')
+      ? layout
+      : this.layout;
+    const y = (layout && typeof layout === 'object') ? layout.inventory.y : layout;
     this.container.y = y;
     this.drawShelf();
     if (this.scene.inventory && this.scene.selectedSeedId !== undefined) {

@@ -1,29 +1,37 @@
 import Phaser from 'phaser';
 import { DS, drawRoundedRect, drawShadowedRect, createButtonStyle } from './DesignSystem.js';
+import { computeLayout } from './Layout.js';
 
-export function createTopBar(scene, camW) {
+/**
+ * Верхняя панель: монеты, код комнаты, мир/сезон, звук, меню.
+ *
+ * Вся геометрия приходит из Layout (layout.hud) — панель не считает
+ * координаты сама и умеет пересобираться при изменении размера окна
+ * через `resize()`.
+ */
+export function createTopBar(scene, layout) {
+  const L = layout || computeLayout(scene.scale.width, scene.scale.height);
+  const H = L.hud;
+
   const container = scene.add.container(0, 0).setDepth(DS.depth.hud);
 
   // Фон верхней панели с виньеткой
   const bg = scene.add.graphics();
-  // Тень
-  drawShadowedRect(bg, 0, 0, camW, 70, DS.radius.none, DS.colors.bg.elevated, 1, 'lg');
-  // Сама панель
-  drawRoundedRect(bg, 0, 0, camW, 64, 0, DS.colors.bg.primary, 1, DS.colors.ui.divider, 1);
   container.add(bg);
 
-  // === Монеты ===
-  const coinsX = 16;
-  const coinsY = 32;
-  const coinsW = 100;
-  const coinsH = 38;
+  const drawBg = () => {
+    bg.clear();
+    drawShadowedRect(bg, 0, 0, H.w, H.h + 6, 0, DS.colors.bg.elevated, 1, 'lg');
+    drawRoundedRect(bg, 0, 0, H.w, H.h, 0, DS.colors.bg.primary, 1, DS.colors.ui.divider, 1);
+  };
+  drawBg();
 
+  // === Монеты ===
+  const coinsH = Math.min(38, H.h - 14);
   const coinsBg = scene.add.graphics();
-  drawShadowedRect(coinsBg, coinsX, coinsY - coinsH/2 + 2, coinsW, coinsH, DS.radius.md, DS.colors.bg.elevated, 1, 'sm');
-  drawRoundedRect(coinsBg, coinsX, coinsY - coinsH/2, coinsW, coinsH, DS.radius.md, DS.colors.bg.tertiary, 1, DS.colors.ui.border, 1.5);
   container.add(coinsBg);
 
-  const coinsText = scene.add.text(coinsX + coinsW/2, coinsY, '🪙 0', {
+  const coinsText = scene.add.text(0, 0, '🪙 0', {
     fontSize: `${DS.font.size.md}px`,
     color: DS.colors.text.primary,
     fontFamily: DS.font.family.base,
@@ -31,35 +39,44 @@ export function createTopBar(scene, camW) {
   }).setOrigin(0.5);
   container.add(coinsText);
 
-  // === Код комнаты ===
-  const roomX = coinsX + coinsW + 12;
-  const roomY = 32;
-  const roomW = 100;
-  const roomH = 28;
+  const drawCoins = () => {
+    const { x, w } = H.coins;
+    coinsBg.clear();
+    drawShadowedRect(coinsBg, x, H.y - coinsH / 2 + 2, w, coinsH, DS.radius.md, DS.colors.bg.elevated, 1, 'sm');
+    drawRoundedRect(coinsBg, x, H.y - coinsH / 2, w, coinsH, DS.radius.md, DS.colors.bg.tertiary, 1, DS.colors.ui.border, 1.5);
+    coinsText.setPosition(x + w / 2, H.y);
+  };
+  drawCoins();
 
+  // === Код комнаты ===
+  const roomH = Math.min(38, H.h - 14);
   const roomBg = scene.add.graphics();
-  drawShadowedRect(roomBg, roomX, roomY - roomH/2 + 1, roomW, roomH, DS.radius.sm, DS.colors.bg.elevated, 1, 'sm');
-  drawRoundedRect(roomBg, roomX, roomY - roomH/2, roomW, roomH, DS.radius.sm, DS.colors.bg.secondary, 1, DS.colors.brand.primary, 1.5);
   container.add(roomBg);
 
-  const roomCodeText = scene.add.text(roomX + roomW/2, roomY, 'КОД: ...', {
-    fontSize: `${DS.font.size.xs}px`,
-    color: DS.colors.brand.dark,
+  const roomCodeText = scene.add.text(0, 0, 'КОД: ...', {
+    fontSize: `${DS.font.size.sm}px`,
+    color: DS.colors.text.secondary,
     fontFamily: DS.font.family.mono,
     fontWeight: DS.font.weight.bold,
   }).setOrigin(0.5);
   container.add(roomCodeText);
 
-  const roomHit = scene.add.rectangle(roomX + roomW/2, roomY, Math.max(roomW, DS.touchTarget.min), DS.touchTarget.min, 0x000000, 0.001)
-    .setInteractive({ useHandCursor: true });
+  const roomHit = scene.add.rectangle(0, 0, 1, 1, 0x000000, 0.001).setInteractive({ useHandCursor: true });
   container.add(roomHit);
 
-  // === Мир/сезон/фаза ===
-  const worldX = camW / 2;
-  const worldY = 32;
+  const drawRoom = () => {
+    const { x, w } = H.room;
+    roomBg.clear();
+    drawRoundedRect(roomBg, x, H.y - roomH / 2, w, roomH, DS.radius.md, DS.colors.bg.secondary, 1, DS.colors.ui.border, 1);
+    roomCodeText.setPosition(x + w / 2, H.y);
+    roomHit.setPosition(x + w / 2, H.y);
+    roomHit.setSize(Math.max(w, DS.touchTarget.min), DS.touchTarget.min);
+  };
+  drawRoom();
 
-  const worldText = scene.add.text(worldX, worldY, '', {
-    fontSize: `${DS.font.size.md}px`,
+  // === Мир/сезон/фаза ===
+  const worldText = scene.add.text(H.world.x, H.world.y, '', {
+    fontSize: `${H.compact ? DS.font.size.sm : DS.font.size.md}px`,
     color: DS.colors.text.primary,
     fontFamily: DS.font.family.title,
     fontWeight: DS.font.weight.medium,
@@ -67,14 +84,7 @@ export function createTopBar(scene, camW) {
   container.add(worldText);
 
   // === Кнопки справа ===
-  const btnSize = 48;
-  const gap = 8;
-  const rightMargin = 12;
-  const muteX = camW - rightMargin - btnSize/2;
-  const menuX = muteX - btnSize - gap;
-
-  // Кнопка звука
-  const muteBtn = createIconButton(scene, muteX, worldY, btnSize, '🔊', () => {
+  const muteBtn = createIconButton(scene, H.mute.x, H.mute.y, H.btn, '🔊', () => {
     if (scene.sound) {
       const isEnabled = scene.sound.toggleMute();
       muteBtn.setLabel(isEnabled ? '🔊' : '🔇');
@@ -82,21 +92,32 @@ export function createTopBar(scene, camW) {
   }, 'Вкл/выкл звук');
   container.add(muteBtn);
 
-  // Кнопка меню
-  const menuBtn = createIconButton(scene, menuX, worldY, btnSize, '☰', () => {
+  const menuBtn = createIconButton(scene, H.menu.x, H.menu.y, H.btn, '☰', () => {
     if (scene.openMenu) scene.openMenu();
   }, 'Меню');
   container.add(menuBtn);
 
-  return { 
-    container, 
-    coins: coinsText, 
-    world: worldText, 
-    menuBtn, 
+  const apply = (next) => {
+    Object.assign(H, next.hud);
+    drawBg();
+    drawCoins();
+    drawRoom();
+    worldText.setPosition(H.world.x, H.world.y);
+    worldText.setFontSize(H.compact ? DS.font.size.sm : DS.font.size.md);
+    muteBtn.setPosition(H.mute.x, H.mute.y);
+    menuBtn.setPosition(H.menu.x, H.menu.y);
+  };
+
+  return {
+    container,
+    coins: coinsText,
+    world: worldText,
+    menuBtn,
     muteBtn,
     roomCode: roomCodeText,
     roomHit,
-    bg 
+    bg,
+    resize: (nextLayout) => apply(nextLayout || computeLayout(scene.scale.width, scene.scale.height)),
   };
 }
 
