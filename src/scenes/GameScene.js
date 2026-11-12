@@ -170,7 +170,7 @@ export default class GameScene extends Phaser.Scene {
     this.drawGrid();
     this.activityLayer = new ActivityLayer(this, this.tileSize, this.tiles);
     this.createGardenDecor();
-    this.avatarLayer = this.add.container(0, 0).setDepth(250);
+    this.avatarLayer = this.add.container(0, 0).setDepth(DS.depth.avatars);
 
     this.treeHit = this.add.rectangle(0, 0, 80, 120, 0x000000, 0.001)
       .setDepth(60).setInteractive({ useHandCursor: true });
@@ -212,7 +212,7 @@ export default class GameScene extends Phaser.Scene {
       padding: { x: DS.spacing.md, y: DS.spacing.xs },
       wordWrap: { width: Math.min(this.scale.width - 40, 400) },
       align: 'center'
-    }).setOrigin(0.5).setDepth(DS.depth.toast).setAlpha(0);
+    }).setOrigin(0.5).setDepth(DS.depth.toasts).setAlpha(0);
 
     // Список игроков (левый верхний угол, под HUD)
     this.playerListText = this.add.text(10, 95, '', {
@@ -767,7 +767,7 @@ export default class GameScene extends Phaser.Scene {
     const cx = tile.rect.x;
     const cy = tile.rect.y;
 
-    const container = this.add.container(cx, cy - 20).setDepth(400);
+    const container = this.add.container(cx, cy - 20).setDepth(DS.depth.avatars);
     const shadow = this.add.ellipse(0, 6, 20, 8, 0x000000, 0.3);
     const sprite = this.add.text(0, 0, pet.petEmoji, { fontSize: '32px' }).setOrigin(0.5);
 
@@ -829,13 +829,10 @@ export default class GameScene extends Phaser.Scene {
       this.hintText ? this.hintText : null,
       this.toastText ? this.toastText : null,
       this.emoteBtn ? this.emoteBtn : null,
-      this.roomHit ? this.roomHit : null
+      this.topBar?.roomHit
     ].filter(Boolean);
     this.toolButtons.forEach((entry) => {
-      if (entry.gfx) this.hudContainers.push(entry.gfx);
-      if (entry.hit) this.hudContainers.push(entry.hit);
-      if (entry.label) this.hudContainers.push(entry.label);
-      if (entry.name) this.hudContainers.push(entry.name);
+      if (entry.container) this.hudContainers.push(entry.container);
     });
     // Watch button hides during Watch mode (fullscreen hit rect handles exit)
     if (this.watchBtn) this.hudContainers.push(this.watchBtn);
