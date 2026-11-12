@@ -6,6 +6,7 @@ import { setupSearchRow } from './book/BookSearchRow.js';
 import { setupRarityTabs } from './book/BookRarityTabs.js';
 import { renderGrid } from './book/BookGrid.js';
 import { UNIFIED } from './ui-unified.js';
+import { DS } from './DesignSystem.js';
 
 export class BookOverlay extends Phaser.GameObjects.Container {
   constructor(scene, collection) {

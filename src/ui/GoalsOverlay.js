@@ -3,6 +3,7 @@ import { UI, drawPanel } from './ui-theme.js';
 import { TREE_NODES, STREAK_MULTIPLIERS } from '../../shared/goals.js';
 import { createUnifiedButton, createUnifiedBadge } from './ui-unified.js';
 import { UNIFIED } from './ui-unified.js';
+import { DS } from './DesignSystem.js';
 
 export class GoalsOverlay extends Phaser.GameObjects.Container {
   constructor(scene, goals) {
@@ -211,7 +212,7 @@ export class GoalsOverlay extends Phaser.GameObjects.Container {
     TREE_NODES.forEach((node) => {
       const key = node.check;
       const value = key === 'speciesCount'
-        ? (totals.speciesCount ?? room.collection?.size ?? 0)
+        ? (totals.speciesCount ?? this.scene.collection?.size ?? 0)
         : (totals[key] ?? 0);
       const done = value >= node.target;
       const claimed = (this.goals.treeClaimed || []).includes(node.id);

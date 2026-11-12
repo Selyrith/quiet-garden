@@ -107,6 +107,10 @@ export class SoundManager {
 
   error() { this._playSfx('ui/error', { volume: 0.25, pitch: 0.8 }); }
 
+  uiClick() { this.click(); }
+
+  sell() { this._playSfx('actions/buy', { volume: 0.3, pitch: 1.1 }); }
+
   /**
    * Проиграть SFX по имени. Если файл не найден — процедурный фолбэк.
    */

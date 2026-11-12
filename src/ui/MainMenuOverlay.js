@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { UNIFIED, createUnifiedButton } from './ui-unified.js';
+import { DS } from './DesignSystem.js';
 
 export class MainMenuOverlay extends Phaser.GameObjects.Container {
   constructor(scene, callbacks) {
