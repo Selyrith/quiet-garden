@@ -47,6 +47,20 @@ export const TEAM_GOALS = [
   }
 ];
 
+/**
+ * События, которые вообще считаются кооперативными.
+ * Используется сервером, чтобы не начислять прогресс за посторонние действия.
+ */
+export const COOP_EVENTS = new Set(['plant', 'water', 'harvest', 'activity', 'newSpecies', 'upgrade']);
+
+/**
+ * Частичный вес «нецелевого» кооперативного действия.
+ *
+ * ующие 1/3: игрок, делающий не то действие, что просит текущая цель,
+ * всё равно двигает общую шкалу. Полный вес (1.0) — только у целевого.
+ */
+export const COOP_EVENT_CREDIT = 1 / 3;
+
 export function createTeamState() {
   return {
     currentIndex: 0,
@@ -69,7 +83,10 @@ export function serializeTeam(team) {
     currentIndex: team.currentIndex,
     total: TEAM_GOALS.length,
     goal: current,
-    progress: team.progress,
+    // Прогресс может быть дробным (частичный вес нецелевых действий).
+    // Наружу отдаём целое «сделанных» шагов — иначе HUD показывал бы
+    // «12/20» при фактических 11.6.
+    progress: Math.floor(team.progress || 0),
     completed: team.currentIndex >= TEAM_GOALS.length,
     dailyVisitorsCount: team.dailyVisitors ? team.dailyVisitors.length : 0,
     teamBuff: isBuffActive ? team.teamBuff : null
