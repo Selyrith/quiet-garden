@@ -14,7 +14,7 @@ export class BookOverlay extends Phaser.GameObjects.Container {
     try {
     super(scene, 0, 0);
     scene.add.existing(this);
-    this.setDepth(DS.depth.overlays);
+    this.setDepth(DS.overlay.book);
     this.scene = scene;
     this.collection = collection;
 
@@ -51,7 +51,7 @@ export class BookOverlay extends Phaser.GameObjects.Container {
     scene.add.text(scene.scale.width / 2, scene.scale.height / 2, 'КНИГА УПАЛА:\n' + e.message, {
       fontSize: '13px', color: '#ff5555', backgroundColor: '#000000cc',
       padding: { x: 10, y: 10 }, align: 'center', wordWrap: { width: scene.scale.width - 40 }
-    }).setOrigin(0.5).setDepth(9999).setScrollFactor(0);
+    }).setOrigin(0.5).setDepth(DS.overlay.fatal).setScrollFactor(0);
     }
   }
 

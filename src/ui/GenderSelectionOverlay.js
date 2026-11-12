@@ -1,12 +1,13 @@
 import Phaser from 'phaser';
 import { UNIFIED, createUnifiedButton } from './ui-unified.js';
+import { DS } from './DesignSystem.js';
 
 export class GenderSelectionOverlay extends Phaser.GameObjects.Container {
   constructor(scene, onSelect) {
     const cam = scene.cameras.main;
     super(scene, 0, 0);
     scene.add.existing(this);
-    this.setDepth(9000);
+    this.setDepth(DS.overlay.gender);
     this.scene = scene;
     this.onSelect = onSelect;
 
@@ -49,7 +50,7 @@ export class GenderSelectionOverlay extends Phaser.GameObjects.Container {
     this.maleImg = scene.add.image(startX, avatarY, 'avatar-male')
       .setDisplaySize(avatarSize, avatarSize)
       .setInteractive({ useHandCursor: true })
-      .setDepth(9001);
+      .setDepth(DS.overlay.gender + 1);
     this.maleBorder = scene.add.circle(startX, avatarY, avatarSize / 2 + 6, UNIFIED.color)
       .setStrokeStyle(4, UNIFIED.colorHi)
       .setAlpha(0);
@@ -59,7 +60,7 @@ export class GenderSelectionOverlay extends Phaser.GameObjects.Container {
     this.femaleImg = scene.add.image(startX + avatarSize + gap, avatarY, 'avatar-female')
       .setDisplaySize(avatarSize, avatarSize)
       .setInteractive({ useHandCursor: true })
-      .setDepth(9001);
+      .setDepth(DS.overlay.gender + 1);
     this.femaleBorder = scene.add.circle(startX + avatarSize + gap, avatarY, avatarSize / 2 + 6, UNIFIED.color)
       .setStrokeStyle(4, UNIFIED.colorHi)
       .setAlpha(0);

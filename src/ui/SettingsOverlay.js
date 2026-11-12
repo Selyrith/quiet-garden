@@ -1,4 +1,5 @@
 import { createUnifiedButton, createUnifiedToggle } from './ui-unified.js';
+import { DS } from './DesignSystem.js';
 
 export class SettingsOverlay {
   constructor(scene) {
@@ -17,10 +18,10 @@ export class SettingsOverlay {
     const panelY = h / 2;
 
     this.bg = scene.add.rectangle(w / 2, h / 2, w, h, 0x5c4a3a, 0.9)
-      .setDepth(310);
+      .setDepth(DS.overlay.settings);
 
     this.closeHit = scene.add.rectangle(w / 2, h / 2, w, h, 0x5c4a3a, 0.001)
-      .setDepth(320)
+      .setDepth(DS.overlay.settings + 1)
       .setInteractive();
     this.closeHit.on('pointerdown', (pointer) => {
       const hw = panelW / 2;
@@ -35,7 +36,7 @@ export class SettingsOverlay {
     this.escKey = scene.input.keyboard.addKey('ESC', false);
     this.escKey.once('down', () => this.destroy());
 
-    this.panel = scene.add.container(panelX, panelY).setDepth(330);
+    this.panel = scene.add.container(panelX, panelY).setDepth(DS.overlay.settings + 2);
 
     const bgPanel = scene.add.rectangle(0, 0, panelW, panelH, 0xf8f4ee, 0.98).setStrokeStyle(2, 0xc9a884);
     this.panel.add(bgPanel);

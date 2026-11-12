@@ -3,6 +3,7 @@ import { getPlant } from '../../shared/plants.js';
 import { MUTATION_COUNT, getMutation } from '../../shared/mutations.js';
 import { drawPixelPlant } from './PixelArt.js';
 import { UNIFIED } from './ui-unified.js';
+import { DS } from './DesignSystem.js';
 
 const MUT_PER_PAGE = 20;
 
@@ -11,7 +12,7 @@ export class MutationsOverlay extends Phaser.GameObjects.Container {
     const cam = scene.cameras.main;
     super(scene, 0, 0);
     scene.add.existing(this);
-    this.setDepth(600);
+    this.setDepth(DS.overlay.detail);
     this.scene = scene;
     this.plantSeed = plantSeed;
     this.collection = collection;

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { DS } from './DesignSystem.js';
 
 export const UNIFIED = {
   // Единый цвет для ВСЕХ кнопок и плашек
@@ -30,13 +31,17 @@ export function createUnifiedButton(scene, x, y, w, h, label, onClick, {
   fontSize = '15px',
   fontStyle = 'bold',
   minTouch = UNIFIED.minTouch,
+  // Глубина контейнера. Раньше здесь стояло жёстко 9999 — это выше ЛЮБОГО
+  // оверлея (max DS.depth.onboarding = 500), поэтому кнопки магазина/меню
+  // рисовались поверх тостов и подсказок. По умолчанию — уровень оверлеев.
+  depth = DS.overlay.shop,
 } = {}) {
   const baseColor = secondary ? UNIFIED.secondary : UNIFIED.color;
   const textColor = secondary ? UNIFIED.secondaryText : UNIFIED.text;
 
   // Обёртка контейнера
   const container = scene.add.container(x, y);
-  container.setDepth(9999);
+  container.setDepth(depth);
 
   // Визуальная кнопка (графика, чтобы управлять состоянием)
   const g = scene.add.graphics();

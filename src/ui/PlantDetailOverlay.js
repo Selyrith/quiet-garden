@@ -3,13 +3,14 @@ import { getPlant } from '../../shared/plants.js';
 import { drawPixelPlant } from './PixelArt.js';
 import { MutationsOverlay } from './MutationsOverlay.js';
 import { UNIFIED, createUnifiedButton } from './ui-unified.js';
+import { DS } from './DesignSystem.js';
 
 export class PlantDetailOverlay extends Phaser.GameObjects.Container {
   constructor(scene, seed, collection) {
     const cam = scene.cameras.main;
     super(scene, 0, 0);
     scene.add.existing(this);
-    this.setDepth(560);
+    this.setDepth(DS.overlay.detail);
     this.scene = scene;
 
     const plant = getPlant(seed);

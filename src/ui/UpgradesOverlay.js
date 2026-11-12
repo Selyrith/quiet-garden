@@ -1,13 +1,14 @@
 import Phaser from 'phaser';
 import { UI, drawPanel } from './ui-theme.js';
 import { UNIFIED, createUnifiedButton } from './ui-unified.js';
+import { DS } from './DesignSystem.js';
 import { UPGRADES, getUpgradeCost } from '../../shared/upgrades.js';
 
 export class UpgradesOverlay extends Phaser.GameObjects.Container {
   constructor(scene, coins, upgrades) {
     super(scene, 0, 0);
     scene.add.existing(this);
-    this.setDepth(510);
+    this.setDepth(DS.overlay.upgrades);
     this.scene = scene;
     this.coins = coins;
     this.upgrades = upgrades;

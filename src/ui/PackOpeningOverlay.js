@@ -1,13 +1,14 @@
 import Phaser from 'phaser';
 import { getPlant } from '../../shared/plants.js';
 import { drawPixelPlant } from './PixelArt.js';
+import { DS } from './DesignSystem.js';
 
 export class PackOpeningOverlay extends Phaser.GameObjects.Container {
   constructor(scene, seeds) {
     const cam = scene.cameras.main;
     super(scene, 0, 0);
     scene.add.existing(this);
-    this.setDepth(700);
+    this.setDepth(DS.overlay.pack);
     this.scene = scene;
 
     this.bg = scene.add.rectangle(0, 0, cam.width, cam.height, 0x000000, 0.85).setOrigin(0).setInteractive();

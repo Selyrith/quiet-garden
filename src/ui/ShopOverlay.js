@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { UI, drawPanel } from './ui-theme.js';
 import { UNIFIED, createUnifiedButton } from './ui-unified.js';
+import { DS } from './DesignSystem.js';
 import { PACKS } from '../../shared/packs.js';
 
 export class ShopOverlay extends Phaser.GameObjects.Container {
@@ -8,7 +9,7 @@ export class ShopOverlay extends Phaser.GameObjects.Container {
     const cam = scene.cameras.main;
     super(scene, 0, 0);
     scene.add.existing(this);
-    this.setDepth(650);
+    this.setDepth(DS.overlay.shop);
     this.scene = scene;
 
     scene.hideSignpost?.();

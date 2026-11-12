@@ -1,12 +1,13 @@
 import Phaser from 'phaser';
 import { ROLES } from '../../shared/roles.js';
 import { UNIFIED } from './ui-unified.js';
+import { DS } from './DesignSystem.js';
 
 export class RolesOverlay extends Phaser.GameObjects.Container {
   constructor(scene, currentRole) {
     super(scene, 0, 0);
     scene.add.existing(this);
-    this.setDepth(530);
+    this.setDepth(DS.overlay.roles);
     this.scene = scene;
 
     scene.hideSignpost?.();
