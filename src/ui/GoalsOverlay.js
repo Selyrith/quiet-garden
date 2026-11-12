@@ -8,7 +8,7 @@ export class GoalsOverlay extends Phaser.GameObjects.Container {
   constructor(scene, goals) {
     super(scene, 0, 0);
     scene.add.existing(this);
-    this.setDepth(520);
+    this.setDepth(DS.depth.overlays);
     this.scene = scene;
     this.goals = goals;
     this.isClaiming = false;

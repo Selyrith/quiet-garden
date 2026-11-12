@@ -6,7 +6,7 @@ export class MainMenuOverlay extends Phaser.GameObjects.Container {
     const cam = scene.cameras.main;
     super(scene, 0, 0);
     scene.add.existing(this);
-    this.setDepth(400);
+    this.setDepth(DS.depth.overlays);
     this.scene = scene;
     this.callbacks = callbacks || {};
 

@@ -4,7 +4,7 @@ import { QUICK_MESSAGES } from '../../shared/quick-messages.js';
 import { UNIFIED } from './ui-unified.js';
 
 export function createEmotesBar(scene, onSend, onSendPhrase) {
-  const container = scene.add.container(0, 0).setDepth(500);
+  const container = scene.add.container(0, 0).setDepth(DS.depth.overlays);
   const camW = scene.scale.width;
   const camH = scene.scale.height;
   // Расширенный фон для эмодзи + фраз — единый цвет фона

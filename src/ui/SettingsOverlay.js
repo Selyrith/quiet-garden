@@ -17,10 +17,10 @@ export class SettingsOverlay {
     const panelY = h / 2;
 
     this.bg = scene.add.rectangle(w / 2, h / 2, w, h, 0x5c4a3a, 0.9)
-      .setDepth(9998);
+      .setDepth(310);
 
     this.closeHit = scene.add.rectangle(w / 2, h / 2, w, h, 0x5c4a3a, 0.001)
-      .setDepth(9999)
+      .setDepth(320);
       .setInteractive();
     this.closeHit.on('pointerdown', (pointer) => {
       const hw = panelW / 2;
@@ -35,7 +35,7 @@ export class SettingsOverlay {
     this.escKey = scene.input.keyboard.addKey('ESC', false);
     this.escKey.once('down', () => this.destroy());
 
-    this.panel = scene.add.container(panelX, panelY).setDepth(10000);
+    this.panel = scene.add.container(panelX, panelY).setDepth(330);
 
     const bgPanel = scene.add.rectangle(0, 0, panelW, panelH, 0xf8f4ee, 0.98).setStrokeStyle(2, 0xc9a884);
     this.panel.add(bgPanel);
