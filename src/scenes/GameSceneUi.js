@@ -10,6 +10,10 @@ import { updatePlayerList } from '../ui/PlayerList.js';
 
 export const GameSceneUi = {
   selectTool(toolId) {
+    // Onboarding step 3: finish when selecting water tool (check BEFORE changing tool)
+    if (this.onboarding?.active && this.onboarding.step === 3 && toolId === 'water') {
+      this.onboarding.finish();
+    }
     this.selectedTool = toolId;
 
     for (const [id, entry] of this.toolButtons) {

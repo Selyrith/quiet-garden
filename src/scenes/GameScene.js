@@ -1007,50 +1007,58 @@ export default class GameScene extends Phaser.Scene {
   }
 
   createGardenDecor() {
-    // Cozy environment: pond, lanterns, bench, fence corners (graphics, no heavy assets)
+    // Cozy environment: pond, lanterns, bench, fence - positioned within visible garden area
     const totalSize = this.tileSize * GRID;
     const offsetX = (this.scale.width - totalSize) / 2;
     const offsetY = (this.scale.height - totalSize) / 2 - 10;
-    const g = this.add.graphics().setDepth(0);
+    const g = this.add.graphics().setDepth(-5); // Behind garden but visible
 
-    // Пруд в нижнем-правом углу сада (мягкий овал с бликами)
-    const pondX = offsetX + totalSize + 40;
-    const pondY = offsetY + totalSize - 20;
+    // Пруд в углу сада (внутри границ сада)
+    const pondX = offsetX + totalSize * 0.85;
+    const pondY = offsetY + totalSize * 0.85;
+    const pondW = totalSize * 0.25;
+    const pondH = totalSize * 0.15;
     g.fillStyle(0x3f7fbf, 0.35);
-    g.fillEllipse(pondX, pondY, 120, 70);
+    g.fillEllipse(pondX, pondY, pondW, pondH);
     g.fillStyle(0x6fb7e8, 0.25);
-    g.fillEllipse(pondX - 10, pondY - 6, 80, 40);
+    g.fillEllipse(pondX - pondW * 0.1, pondY - pondH * 0.1, pondW * 0.6, pondH * 0.5);
     g.lineStyle(2, 0x2c5f8a, 0.25);
-    g.strokeEllipse(pondX, pondY, 120, 70);
+    g.strokeEllipse(pondX, pondY, pondW, pondH);
 
-    // Фонарики у дорожек (тёплые точки света, без postFX)
+    // Фонарики по периметру сада (внутри границ)
     const lanterns = [
-      [offsetX - 18, offsetY + 20],
-      [offsetX + totalSize + 18, offsetY + 40],
-      [offsetX - 18, offsetY + totalSize - 40]
+      [offsetX + totalSize * 0.05, offsetY + totalSize * 0.1],
+      [offsetX + totalSize * 0.95, offsetY + totalSize * 0.15],
+      [offsetX + totalSize * 0.1, offsetY + totalSize * 0.9],
+      [offsetX + totalSize * 0.9, offsetY + totalSize * 0.85]
     ];
     for (const [lx, ly] of lanterns) {
       g.fillStyle(0xfff3b0, 0.25);
-      g.fillCircle(lx, ly, 18);
+      g.fillCircle(lx, ly, 14);
       g.fillStyle(0xffd54f, 0.5);
-      g.fillCircle(lx, ly, 8);
+      g.fillCircle(lx, ly, 6);
       g.fillStyle(0x5d4037, 1);
-      g.fillRect(lx - 2, ly + 6, 4, 16);
+      g.fillRect(lx - 1.5, ly + 4, 3, 12);
     }
 
-    // Скамейка у пруда
-    const bx = pondX - 70, by = pondY - 40;
+    // Скамейка у пруда (внутри сада)
+    const bx = pondX - totalSize * 0.12, by = pondY - totalSize * 0.12;
     g.fillStyle(0x8d6e63, 1);
-    g.fillRoundedRect(bx, by, 44, 10, 3);
-    g.fillRect(bx + 4, by + 10, 4, 10);
-    g.fillRect(bx + 36, by + 10, 4, 10);
+    g.fillRoundedRect(bx, by, 36, 8, 2);
+    g.fillRect(bx + 3, by + 8, 3, 8);
+    g.fillRect(bx + 30, by + 8, 3, 8);
 
-    // Лёгкий забор по углам (декоративные столбики)
-    g.fillStyle(0x6d4c41, 0.9);
-    for (let i = 0; i <= 8; i += 2) {
+    // Лёгкий забор по краям сада
+    g.fillStyle(0x6d4c41, 0.7);
+    for (let i = 0; i <= 8; i++) {
       const fx = offsetX + i * this.tileSize;
-      g.fillRect(fx, offsetY - 10, 6, 10);
-      g.fillRect(fx, offsetY + totalSize, 6, 10);
+      g.fillRect(fx, offsetY - 6, 4, 6);
+      g.fillRect(fx, offsetY + totalSize, 4, 6);
+    }
+    for (let i = 0; i <= 8; i++) {
+      const fy = offsetY + i * this.tileSize;
+      g.fillRect(offsetX - 6, fy, 6, 4);
+      g.fillRect(offsetX + totalSize, fy, 6, 4);
     }
 
     this.gardenDecor = g;
