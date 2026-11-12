@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GameSceneActions, TOOLS } from './GameSceneActions.js';
+import { GameSceneActions } from './GameSceneActions.js';
 import { GameSceneTiles } from './GameSceneTiles.js';
 import { GameSceneUi } from './GameSceneUi.js';
 import { ActivityLayer } from '../ui/ActivityLayer.js';
@@ -15,6 +15,7 @@ import { createTopBar } from '../ui/HudTopBar.js';
 import { createTeamGoalBar } from '../ui/HudTeamBar.js';
 import { createEmotesBar } from '../ui/HudEmotesBar.js';
 import { InventoryBar } from '../ui/InventoryBar.js';
+import { computeLayout, rowCenters } from '../ui/Layout.js';
 import { createAvatar, tintAvatar, updateAvatarLabel } from '../ui/PlayerAvatar.js';
 import { avatarStandPosition } from '../ui/avatar-layout.js';
 import { generateAllPlantTextures } from '../ui/PlantTextureFactory.js';
@@ -167,6 +168,11 @@ export default class GameScene extends Phaser.Scene {
       this.ambient = new AmbientEffects(this);
     }
 
+    // Единая раскладка считается ОДИН раз на размер экрана.
+    // От неё питаются все: сетка, HUD, тулбар, полка инвентаря, боковые кнопки.
+    this.layout = computeLayout(this.scale.width, this.scale.height);
+    this.tileSize = this.layout.grid.tileSize;
+
     this.drawGrid();
     this.activityLayer = new ActivityLayer(this, this.tileSize, this.tiles);
     this.createGardenDecor();
@@ -193,17 +199,17 @@ export default class GameScene extends Phaser.Scene {
     this.teamTree = this.add.graphics().setDepth(50);
     this.drawTeamTree(0);
 
-    this.topBar = createTopBar(this, this.scale.width);
+    this.topBar = createTopBar(this, this.layout);
     if (this.topBar.menuBtn) this.topBar.menuBtn.on('pointerdown', () => this.openMenu());
     if (this.topBar.roomHit) this.topBar.roomHit.on('pointerdown', () => this.copyRoomCode());
 
     this.teamBar = createTeamGoalBar(this);
     if (this.teamBar && this.teamBar.container) {
-      this.teamBar.container.setPosition(this.scale.width / 2, 100);
+      this.teamBar.container.setPosition(this.layout.w / 2, this.layout.hudH + 44);
     }
 
     // Всплывающие уведомления (под teamBar)
-    this.toastText = this.add.text(this.scale.width / 2, Math.min(200, this.gridOrigin.y - 60), '', {
+    this.toastText = this.add.text(this.layout.w / 2, this.layout.toastY, '', {
       fontSize: `${DS.font.size.sm}px`,
       color: DS.colors.brand.gold,
       fontFamily: DS.font.family.base,
@@ -215,14 +221,15 @@ export default class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(DS.depth.toasts).setAlpha(0);
 
     // Список игроков (левый верхний угол, под HUD)
-    this.playerListText = this.add.text(10, 128, '', {
+    this.playerListText = this.add.text(this.layout.margin, this.layout.hudH + 6, '', {
       fontSize: `${DS.font.size.xs}px`, color: DS.colors.text.muted, fontFamily: DS.font.family.base, fontWeight: DS.font.weight.medium
     }).setDepth(DS.depth.hud + 1);
 
     // Деревянная табличка для записок (центр сверху, над всеми грядками)
-    const spW = 200, spH = 24;
-    const spX = this.scale.width / 2;
-    const spY = (this.gridOrigin ? this.gridOrigin.y : this.scale.height / 2) - spH - 8;
+    const sp = this.layout.signpost;
+    const spW = sp.w, spH = sp.h;
+    const spX = sp.x;
+    const spY = sp.y;
 
     this.signpostBg = this.add.graphics();
     this.signpostBg.setDepth(1000).setScrollFactor(0);
@@ -244,7 +251,7 @@ export default class GameScene extends Phaser.Scene {
     });
 
     // 3. Подсказка (внизу, над кнопками)
-    this.hintText = this.add.text(this.scale.width / 2, this.scale.height - 180, '', {
+    this.hintText = this.add.text(this.layout.w / 2, this.layout.hintY, '', {
       fontSize: `${DS.font.size.sm}px`,
       color: DS.colors.text.primary,
       fontFamily: DS.font.family.base,
@@ -258,7 +265,7 @@ export default class GameScene extends Phaser.Scene {
     this.openMenu = GameSceneUi.openMenu.bind(this);
     this.copyRoomCode = GameSceneActions.copyRoomCode.bind(this);
 
-    this.inventoryBar = new InventoryBar(this, this.scale.height - 60);
+    this.inventoryBar = new InventoryBar(this, this.layout);
     this.inventoryBar.container.setVisible(false);
 
     this.createEmoteButton();
@@ -332,11 +339,11 @@ export default class GameScene extends Phaser.Scene {
 
   drawGrid() {
     const totalSize = this.tileSize * GRID;
-    const offsetX = (this.scale.width - totalSize) / 2;
-    // Сдвигаем сетку чуть выше центра, чтобы освободить место для нижней панели
-    const offsetY = (this.scale.height - totalSize) / 2 - 10;
+    // Сетка вписана в остаток экрана; координаты — только из единой раскладки.
+    const offsetX = this.layout.grid.x;
+    const offsetY = this.layout.grid.y;
 
-    this.gridOrigin = { x: offsetX, y: offsetY };
+    this.gridOrigin = { x: offsetX, y: offsetY, size: totalSize };
 
     // Деревянная рамка вокруг всего сада + дорожки между грядками (cozy frame)
     this.savedFrameRect = this.add.rectangle(offsetX + totalSize / 2, offsetY + totalSize / 2, totalSize + 16, totalSize + 16, 0x3e2723)
@@ -453,52 +460,11 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  createToolButtons() {
-    const totalW = TOOLS.length * 70;
-    const startX = (this.scale.width - totalW) / 2 + 35;
-    const y = this.scale.height - 130;
-    const w = 60;
-    const h = 60;
-
-    TOOLS.forEach((tool, i) => {
-      const x = startX + i * 70;
-      const gfx = this.add.graphics().setDepth(150);
-      gfx.setPosition(x, y);
-
-      const label = this.add.text(x, y - 8, tool.label, { fontSize: '26px' })
-        .setOrigin(0.5).setDepth(151);
-
-      const isSmallScreen = this.scale.width < 520;
-      const name = this.add.text(x, y + 18, tool.name, {
-        fontSize: isSmallScreen ? '12px' : '10px', color: '#94a3b8', fontStyle: 'bold'
-      }).setOrigin(0.5).setDepth(151);
-
-      const hit = this.add.rectangle(x, y, w, h, 0x000000, 0.001)
-        .setInteractive({ useHandCursor: true }).setDepth(152);
-
-      hit.on('pointerdown', () => {
-        this.sound.click();
-        this.selectTool(tool.id);
-      });
-
-      // Hover-эффект: легкое увеличение кнопки
-      hit.on('pointerover', () => {
-        if (this.selectedTool !== tool.id) {
-          this.tweens.add({ targets: gfx, scaleX: 1.08, scaleY: 1.08, duration: 150, ease: 'Sine.easeOut' });
-        }
-      });
-      hit.on('pointerout', () => {
-        if (this.selectedTool !== tool.id) {
-          this.tweens.add({ targets: gfx, scaleX: 1, scaleY: 1, duration: 150, ease: 'Sine.easeOut' });
-        }
-      });
-
-      this.toolButtons.set(tool.id, { gfx, name, w, h, label, hit, x, y });
-    });
-  }
-
   createEmoteButton() {
-    this.emoteBtn = this.add.text(this.scale.width - 30, this.scale.height - 220, '😊', {
+    const S = this.layout.side;
+    const x = S.emoteX ?? S.x;
+    const y = S.emoteY;
+    this.emoteBtn = this.add.text(x, y, '😊', {
       fontSize: '28px'
     }).setOrigin(0.5).setDepth(150).setInteractive({ useHandCursor: true });
     const btn = this.emoteBtn;
@@ -518,7 +484,8 @@ export default class GameScene extends Phaser.Scene {
   }
 
   createWatchButton() {
-    this.watchBtn = this.add.text(this.scale.width - 30, this.scale.height - 280, '👁️', {
+    const S = this.layout.side;
+    this.watchBtn = this.add.text(S.watchX ?? S.x, S.watchY, '👁️', {
       fontSize: '28px'
     }).setOrigin(0.5).setDepth(150).setInteractive({ useHandCursor: true });
 
@@ -549,7 +516,8 @@ export default class GameScene extends Phaser.Scene {
   }
 
   createPetButton() {
-    this.petBtn = this.add.text(this.scale.width - 30, this.scale.height - 340, '🥚', {
+    const S = this.layout.side;
+    this.petBtn = this.add.text(S.petX ?? S.x, S.petY, '🥚', {
       fontSize: '28px'
     }).setOrigin(0.5).setDepth(150).setInteractive({ useHandCursor: true });
 
@@ -1091,10 +1059,12 @@ export default class GameScene extends Phaser.Scene {
   }
 
   rebuildGridLayout() {
+    // Позиция сетки приходит из раскладки, а не из «центра экрана».
+    const G = this.layout.grid;
     const totalSize = this.tileSize * 8;
-    const offsetX = (this.scale.width - totalSize) / 2;
-    const offsetY = (this.scale.height - totalSize) / 2 - 10;
-    this.gridOrigin = { x: offsetX, y: offsetY };
+    const offsetX = G.x;
+    const offsetY = G.y;
+    this.gridOrigin = { x: offsetX, y: offsetY, size: totalSize };
     for (let y = 0; y < 8; y++) {
       for (let x = 0; x < 8; x++) {
         const tile = this.tiles.get(`${x},${y}`);
@@ -1117,59 +1087,69 @@ export default class GameScene extends Phaser.Scene {
   }
 
   handleResize() {
-    const w = this.scale.width;
-    const h = this.scale.height;
+    // Единая раскладка пересчитывается ЗДЕСЬ ОДИН РАЗ и раздаётся всем.
+    // Раньше у resize была своя арифметика (h - 80, h - 60, w - 30),
+    // из-за которой кнопки прыгали относительно create().
+    this.layout = computeLayout(this.scale.width, this.scale.height);
+    const L = this.layout;
+    const w = L.w;
+    const h = L.h;
 
-    // Сначала пересчитываем сетку
+    this.tileSize = L.grid.tileSize;
     this.rebuildGridLayout();
 
-    if (this.hintText) {
-      const gridBottom = this.gridOrigin.y + this.tileSize * 8;
-      let hintY = Math.max(h - 180, gridBottom + 40);
-      if (hintY > h - 90) hintY = h - 90;
-      this.hintText.setPosition(w / 2, hintY);
+    if (this.hintText) this.hintText.setPosition(w / 2, L.hintY);
+    if (this.toastText) {
+      this.toastText.setPosition(w / 2, L.toastY);
+      this.toastText.setWordWrapWidth(Math.min(w - 40, 400));
     }
-    if (this.toastText) this.toastText.setPosition(w / 2, Math.min(200, this.gridOrigin.y - 60));
-    if (this.emoteBtn) this.emoteBtn.setPosition(w - 30, h - 220);
-    if (this.watchBtn) this.watchBtn.setPosition(w - 30, h - 280);
-    if (this.petBtn)   this.petBtn.setPosition(w - 30, h - 340);
-    if (this.playerListText) this.playerListText.setPosition(10, 128);
+    if (this.playerListText) this.playerListText.setPosition(L.margin, L.hudH + 6);
 
-    if (this.inventoryBar) this.inventoryBar.resize(h - 60);
+    // Боковые кнопки: одна точка на все три (рельса или ряд).
+    if (this.emoteBtn) {
+      const x = L.side.emoteX ?? L.side.x;
+      this.emoteBtn.setPosition(x, L.side.emoteY);
+    }
+    if (this.watchBtn) {
+      const x = L.side.watchX ?? L.side.x;
+      this.watchBtn.setPosition(x, L.side.watchY);
+    }
+    if (this.petBtn) {
+      const x = L.side.petX ?? L.side.x;
+      this.petBtn.setPosition(x, L.side.petY);
+    }
+
+    // Верхняя панель и полка инвентаря сами берут координаты из layout.
+    if (this.topBar && this.topBar.resize) this.topBar.resize(L);
+    if (this.inventoryBar) this.inventoryBar.resize(L);
     if (this.weather && this.weather.resize) this.weather.resize();
 
     if (this.teamBar && this.teamBar.container) {
-      this.teamBar.container.setPosition(w / 2, 100);
+      this.teamBar.container.setPosition(w / 2, L.hudH + 44);
     }
 
+    // Табличка сада
+    const sp = L.signpost;
     if (this.signpostBg) {
-      const spW = 200, spH = 24;
-      const spX = w / 2;
-      const spY = (this.gridOrigin ? this.gridOrigin.y : h / 2) - spH - 8;
       this.signpostBg.clear();
-      drawRoundedRect(this.signpostBg, spX - spW / 2, spY, spW, spH, DS.radius.sm, DS.colors.bg.elevated, 1, DS.colors.ui.border, 2);
-      if (this.signpostText) this.signpostText.setPosition(spX, spY + spH / 2);
+      drawRoundedRect(this.signpostBg, sp.x - sp.w / 2, sp.y, sp.w, sp.h, DS.radius.sm, DS.colors.bg.elevated, 1, DS.colors.ui.border, 2);
+      if (this.signpostText) this.signpostText.setPosition(sp.x, sp.y + sp.h / 2);
       if (this.signpostHit) {
-        this.signpostHit.setPosition(spX, spY + spH / 2);
-        this.signpostHit.setSize(spW, spH);
+        this.signpostHit.setPosition(sp.x, sp.y + sp.h / 2);
+        this.signpostHit.setSize(sp.w, sp.h);
       }
     }
 
     if (this.teamTree) this.drawTeamTree(this.teamTreeLevel || 0);
 
-    // Tool buttons are now managed by GameSceneUi - they use containers with hit areas
+    // Тулбар
     if (this.toolButtons) {
-      const btnSize = 56;
-      const gap = 8;
-      const totalW = 4 * btnSize + 3 * gap;
-      const startX = w / 2 - totalW / 2 + btnSize / 2;
-      const y = h - 80;
+      const centers = rowCenters(this.toolButtons.size, w / 2, L.toolbar.y, L.toolbar.size, L.toolbar.gap);
       let i = 0;
-      this.toolButtons.forEach((btn, id) => {
+      this.toolButtons.forEach((btn) => {
         if (!btn.container) return;
-        const x = startX + i * (btnSize + gap);
-        btn.container.setPosition(x, y);
-        i++;
+        const c = centers[i++];
+        if (c) btn.container.setPosition(c.x, c.y);
       });
     }
   }
