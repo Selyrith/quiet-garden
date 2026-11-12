@@ -1,0 +1,5 @@
+validation:
+  commands:
+    default:
+      - "pnpm test"
+      - "pnpm run build"
