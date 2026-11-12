@@ -6,24 +6,66 @@ import { createPetState } from './pet-system.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const DATA_DIR = path.join(__dirname, '..', 'data');
-const SAVE_FILE = path.join(DATA_DIR, 'rooms.json');
 
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+function getDataDir() {
+  const envDir = process.env.DATA_DIR;
+  if (envDir) {
+    return path.resolve(envDir);
+  }
+  return path.join(__dirname, '..', 'data');
+}
+
+function getSaveFile() { return path.join(getDataDir(), 'rooms.json'); }
+function getBackupFile() { return path.join(getDataDir(), 'rooms.json.bak'); }
+
+// Ensure the data dir exists (for the default path).
+if (!fs.existsSync(getDataDir())) {
+  fs.mkdirSync(getDataDir(), { recursive: true });
+}
+
+function readRoomsFile() {
+  const saveFile = getSaveFile();
+  const backupFile = getBackupFile();
+  for (const file of [saveFile, backupFile]) {
+    if (!fs.existsSync(file)) continue;
+    try {
+      const raw = fs.readFileSync(file, 'utf8');
+      if (!raw.trim()) continue;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        if (file === backupFile) {
+          console.warn('[save] Основной файл битый — восстановлено из резервной копии.');
+        }
+        return parsed;
+      }
+    } catch (e) {
+      console.warn(`[save] Не удалось прочитать ${path.basename(file)}: ${e.message}`);
+    }
+  }
+  return {};
+}
+
+function writeRoomsFile(diskRooms) {
+  const saveFile = getSaveFile();
+  const backupFile = getBackupFile();
+  const tmpFile = saveFile + '.tmp';
+  fs.writeFileSync(tmpFile, JSON.stringify(diskRooms, null, 2), 'utf8');
+
+  if (fs.existsSync(saveFile)) {
+    try {
+      JSON.parse(fs.readFileSync(saveFile, 'utf8'));
+      fs.copyFileSync(saveFile, backupFile);
+    } catch {
+      // Битый старый файл в бэкап не копируем — он и так бесполезен.
+    }
+  }
+
+  fs.renameSync(tmpFile, saveFile);
 }
 
 export function saveRooms(rooms) {
   try {
-    let diskRooms = {};
-    if (fs.existsSync(SAVE_FILE)) {
-      try {
-        diskRooms = JSON.parse(fs.readFileSync(SAVE_FILE, 'utf8'));
-      } catch (e) {
-        console.warn('[save] Битый rooms.json — начинаем с пустого');
-        diskRooms = {};
-      }
-    }
+    const diskRooms = readRoomsFile();
     const now = Date.now();
     for (const code of Object.keys(diskRooms)) {
       if (now - (diskRooms[code].savedAt || 0) > ROOM_EXPIRE_MS) delete diskRooms[code];
@@ -51,28 +93,28 @@ export function saveRooms(rooms) {
         signpostMessage: room.signpostMessage || "",
         playerGoals: room.playerGoals ? Array.from(room.playerGoals.entries()) : [],
         pet: room.pet ? {
-          stage: room.pet.stage,
-          petId: room.pet.petId,
-          petEmoji: room.pet.petEmoji,
-          petName: room.pet.petName,
-          petColor: room.pet.petColor,
-          daysAnswered: room.pet.daysAnswered,
-          lastQuestionDay: room.pet.lastQuestionDay,
-          hatchTime: room.pet.hatchTime,
-          petX: room.pet.petX,
-          petY: room.pet.petY,
+          stage: room.pet.stage || 'egg',
+          petId: room.pet.petId || null,
+          petEmoji: room.pet.petEmoji || null,
+          petName: room.pet.petName || null,
+          petColor: room.pet.petColor || null,
+          daysAnswered: room.pet.daysAnswered || 0,
+          lastQuestionDay: room.pet.lastQuestionDay || null,
+          hatchTime: room.pet.hatchTime || null,
+          petX: room.pet.petX || 4,
+          petY: room.pet.petY || 4,
           answers: room.pet.answers ? Array.from(room.pet.answers.entries()) : []
         } : null,
-        lastWeather: room.lastWeather,
-        incomeBonusPermanent: room.incomeBonusPermanent,
-        maxActivitiesBonus: room.maxActivitiesBonus,
-        upgradeDiscount: room.upgradeDiscount,
-        gardenRowsBonus: room.gardenRowsBonus,
+        lastWeather: room.lastWeather || 'sunny',
+        incomeBonusPermanent: room.incomeBonusPermanent || 0,
+        maxActivitiesBonus: room.maxActivitiesBonus || 0,
+        upgradeDiscount: room.upgradeDiscount || 0,
+        gardenRowsBonus: room.gardenRowsBonus || 0,
         lastActivityAt: room.lastActivityAt || 0,
         savedAt: now
       };
     }
-    fs.writeFileSync(SAVE_FILE, JSON.stringify(diskRooms, null, 2), 'utf8');
+    writeRoomsFile(diskRooms);
     console.log(`[save] ${rooms.size} в памяти, ${Object.keys(diskRooms).length} на диске.`);
   } catch (err) {
     console.error('[save] Ошибка сохранения:', err);
@@ -100,7 +142,7 @@ function hydrateRoom(code, data, createRoomFn, createEmptyGardenFn) {
       if (tile) room.garden.set(key, tile);
     }
   }
-  
+
   room.roles = new Map(data.roles || []);
   room.team = data.team || { currentIndex: 0, progress: 0, claimed: [] };
   room.tree = data.tree || { level: 0, progress: 0, nextLevelAt: 50 };
@@ -135,13 +177,11 @@ function hydrateRoom(code, data, createRoomFn, createEmptyGardenFn) {
 
 export function loadRooms(createRoomFn, createEmptyGardenFn) {
   try {
-    if (!fs.existsSync(SAVE_FILE)) return new Map();
-    const raw = fs.readFileSync(SAVE_FILE, 'utf8');
-    const parsed = JSON.parse(raw);
+    const raw = readRoomsFile();
     const result = new Map();
     const now = Date.now();
 
-    for (const [code, data] of Object.entries(parsed)) {
+    for (const [code, data] of Object.entries(raw)) {
       if (now - data.savedAt > ROOM_EXPIRE_MS) continue;
       try {
         result.set(code, hydrateRoom(code, data, createRoomFn, createEmptyGardenFn));
@@ -160,8 +200,9 @@ export function loadRooms(createRoomFn, createEmptyGardenFn) {
 
 export function loadSingleRoom(code, createRoomFn, createEmptyGardenFn) {
   try {
-    if (!fs.existsSync(SAVE_FILE)) return null;
-    const raw = fs.readFileSync(SAVE_FILE, 'utf8');
+    const saveFile = getSaveFile();
+    if (!fs.existsSync(saveFile)) return null;
+    const raw = fs.readFileSync(saveFile, 'utf8');
     const parsed = JSON.parse(raw);
     const data = parsed[code];
     if (!data) return null;

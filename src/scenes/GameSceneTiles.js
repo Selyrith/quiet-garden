@@ -59,8 +59,8 @@ export const GameSceneTiles = {
         const plant = getPlant(seed);
         tile.rect.setStrokeStyle(2, plantTileColor(plant), 0.6);
       } else {
-        // Коричневая рамка вместо зелёной
-        tile.rect.setStrokeStyle(2, 0x3e2723);
+        // Тёплая коричневая рамка (cozy palette)
+        tile.rect.setStrokeStyle(2, 0x5d4037);
       }
     }
 
@@ -177,15 +177,52 @@ export const GameSceneTiles = {
     }
     if (stage !== 3 && tile.bloomFX) { try { tile.bloomFX.destroy(); } catch {} tile.bloomFX = null; }
 
-    // Ready badge: пульсирующий кружок над созревшим растением
+    // Ready badge: пульсирующий кружок над созревшим растением + мягкое свечение/искры
     if (stage === 3 && !tile.readyBadge) {
       const badge = this.add.circle(tile.rect.x, tile.rect.y - 30, 6, 0xffd54f, 1).setDepth(10).setStrokeStyle(1.5, 0xffffff);
       this.tweens.add({ targets: badge, scale: { from: 0.8, to: 1.2 }, duration: 800, yoyo: true, repeat: -1 });
       tile.readyBadge = badge;
+
+      // Мягкое свечение грядки (ADD blend, без тяжёлых шейдеров)
+      const glow = this.add.circle(tile.rect.x, tile.rect.y + this.tileSize * 0.1, this.tileSize * 0.32, 0xfff3b0, 0.35)
+        .setDepth(6).setBlendMode(Phaser.BlendModes.ADD);
+      tile.readyGlow = glow;
+      this.tweens.add({
+        targets: glow,
+        alpha: { from: 0.18, to: 0.5 },
+        scale: { from: 0.9, to: 1.15 },
+        duration: 1200 + Math.random() * 600,
+        yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+      });
+
+      // Лёгкие партиклы «искры» над спелым растением (редкие, чтобы не шумно)
+      if (this.time && this.add && this.add.particles && this.textures.exists('spark_particle')) {
+        try {
+          const sparkle = this.add.particles(tile.rect.x, tile.rect.y - 8, 'spark_particle', {
+            speed: { min: 6, max: 16 },
+            scale: { start: 0.25, end: 0 },
+            lifespan: 900,
+            frequency: 900,
+            quantity: 1,
+            blendMode: 'ADD',
+            tint: [0xfff3b0, 0xffffff, 0xffd54f]
+          }).setDepth(9);
+          tile.readySparkle = sparkle;
+        } catch {}
+      }
     } else if (stage < 3 && tile.readyBadge) {
       this.tweens.killTweensOf(tile.readyBadge);
       tile.readyBadge.destroy();
       tile.readyBadge = null;
+      if (tile.readyGlow) {
+        this.tweens.killTweensOf(tile.readyGlow);
+        tile.readyGlow.destroy();
+        tile.readyGlow = null;
+      }
+      if (tile.readySparkle) {
+        try { tile.readySparkle.destroy(); } catch {}
+        tile.readySparkle = null;
+      }
     }
   },
 

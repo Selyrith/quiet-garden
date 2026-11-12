@@ -159,7 +159,10 @@ export class SoundManager {
     const t = this.ctx.currentTime;
     const v = Math.max(0, Math.min(1, volume)) * 0.5;
 
-    if (name === 'click') {
+    // Map full names to short procedural types
+    const shortName = name.replace('ui/', '').replace('actions/', '');
+
+    if (shortName === 'click') {
       const osc = this.ctx.createOscillator();
       const g = this.ctx.createGain();
       osc.type = 'sine';
@@ -171,7 +174,7 @@ export class SoundManager {
       osc.connect(g).connect(this.ctx.destination);
       osc.start(t);
       osc.stop(t + 0.1);
-    } else if (name === 'plant') {
+    } else if (shortName === 'plant') {
       const osc = this.ctx.createOscillator();
       const g = this.ctx.createGain();
       osc.type = 'triangle';
@@ -194,7 +197,7 @@ export class SoundManager {
       noise.connect(filter).connect(ng).connect(this.ctx.destination);
       noise.start(t);
       noise.stop(t + 0.2);
-    } else if (name === 'water') {
+    } else if (shortName === 'water') {
       [600, 900].forEach((freq, i) => {
         const start = t + i * 0.08;
         const osc = this.ctx.createOscillator();
@@ -209,7 +212,7 @@ export class SoundManager {
         osc.start(start);
         osc.stop(start + 0.2);
       });
-    } else if (name === 'harvest') {
+    } else if (shortName === 'harvest') {
       [523.25, 659.25, 783.99].forEach((freq, i) => {
         const start = t + i * 0.05;
         const osc = this.ctx.createOscillator();
@@ -232,7 +235,7 @@ export class SoundManager {
         mod.stop(start + 0.7);
         osc.stop(start + 0.7);
       });
-    } else if (name === 'buy') {
+    } else if (shortName === 'buy') {
       [440, 554.37, 659.25, 880].forEach((freq, i) => {
         const start = t + i * 0.06;
         const osc = this.ctx.createOscillator();
@@ -246,7 +249,7 @@ export class SoundManager {
         osc.start(start);
         osc.stop(start + 0.35);
       });
-    } else if (name === 'error') {
+    } else if (shortName === 'error') {
       const osc = this.ctx.createOscillator();
       const g = this.ctx.createGain();
       osc.type = 'sine';

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { getPlant } from '../../shared/plants.js';
 import { drawPixelPlant } from './PixelArt.js';
+import { getSeedSellPrice } from '../../shared/balance.js';
 
 export class InventoryBar {
   constructor(scene, y) {
@@ -36,6 +37,20 @@ export class InventoryBar {
   update(inventory, activeSeedId) {
     this.activeSeedId = activeSeedId;
     this.slotsContainer.removeAll(true);
+
+    // Явная кнопка продажи выбранного семени (мобильные: тап по кнопке, без ПКМ)
+    if (activeSeedId != null && (this.scene.inventory?.[activeSeedId] || 0) > 0) {
+      const plantSel = getPlant(activeSeedId);
+      const sellVal = getSeedSellPrice(plantSel?.price ?? 6);
+      const sellBtn = this.scene.add.text(this.scene.scale.width - 44, 30, `💰 ${sellVal}`, {
+        fontSize: '14px', color: '#ffffff', fontStyle: 'bold', backgroundColor: '#8d6e63',
+        padding: { x: 6, y: 3 }
+      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+      sellBtn.on('pointerdown', () => this.sellSelected());
+      sellBtn.on('pointerover', () => this.scene.showHint?.(`Продать выбранное семя за ${sellVal} 🪙`));
+      sellBtn.on('pointerout', () => this.scene.showHint?.(''));
+      this.slotsContainer.add(sellBtn);
+    }
 
     const seedIds = Object.keys(inventory).map(Number);
     if (seedIds.length === 0) {
@@ -111,7 +126,14 @@ export class InventoryBar {
       bgSlot.strokeRoundedRect(x - 22, 8, 44, 44, 8);
 
       const hitArea = this.scene.add.rectangle(x, 30, 44, 44, 0x000000, 0.001).setInteractive({ useHandCursor: true });
-      hitArea.on('pointerdown', () => {
+      hitArea.on('pointerdown', (pointer) => {
+        // ПКМ — быстрое продажа (десктоп). На тач-устройствах продаём через отдельный
+        // режим/кнопку ниже, чтобы не ловить случайные срабатывания при выборе.
+        const isTouch = pointer && (pointer.wasTouch || pointer.pointerType === 'touch');
+        if (!isTouch && pointer && pointer.rightButtonDown && pointer.rightButtonDown()) {
+          this.scene.socket?.emit('sell-seed', { seedId });
+          return;
+        }
         this.scene.selectedSeedId = seedId;
         this.update(inventory, seedId);
         if (this.scene.sound) this.scene.sound.buy();
@@ -121,6 +143,12 @@ export class InventoryBar {
           this.scene.onboarding.next();
         }
       });
+      hitArea.on('pointerover', () => {
+        const plantNow = getPlant(seedId);
+        const sell = getSeedSellPrice(plantNow?.price ?? 6);
+        this.scene.showHint?.(`${plant.name} · клик/тап: выбрать · ПКМ/удержание: продать за ~${sell}🪙`);
+      });
+      hitArea.on('pointerout', () => this.scene.showHint?.(''));
 
       const g = this.scene.add.graphics();
       g.setPosition(x, 44);
@@ -132,6 +160,15 @@ export class InventoryBar {
 
       this.slotsContainer.add([bgSlot, hitArea, g, countText]);
     });
+  }
+
+  sellSelected() {
+    const seedId = this.scene.selectedSeedId ?? this.activeSeedId;
+    if (seedId == null || !(this.scene.inventory?.[seedId] > 0)) {
+      this.scene.showHint?.('Нет выбранного семени для продажи');
+      return;
+    }
+    this.scene.socket?.emit('sell-seed', { seedId });
   }
 
   resize(y) {

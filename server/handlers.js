@@ -16,7 +16,8 @@ import { getWorldState, getGrowthMultiplier } from '../shared/world.js';
 import { aggregateRoleBonuses } from '../shared/roles.js';
 import { getMutation, getRandomMutation } from '../shared/mutations.js';
 import { PACKS, rollPack } from '../shared/packs.js';
-import { ACTION_DURATION, HARVEST_MUTATION_RETURN_CHANCE, TREE_NEXT_LEVEL_MULT } from '../shared/balance.js';
+import { getPlant } from '../shared/plants.js';
+import { ACTION_DURATION, HARVEST_MUTATION_RETURN_CHANCE, SEED_SELL_BACK_RATIO, getNextTreeLevelAt, getSeedSellPrice, getSynergyNeighborReward } from '../shared/balance.js';
 import {
   addToCollection, addCoins, addInventory, incrementStat
 } from './player-profiles.js';
@@ -62,13 +63,6 @@ export function handleTileAction(io, socket, room, code, data) {
     timeoutId: null,
   };
   room.playerJobs.set(playerId, job);
-
-  // Cancel any pending timeout for this player before starting a new action
-  const prevJob = room.playerJobs.get(playerId);
-  if (prevJob && prevJob.timeoutId) {
-    clearTimeout(prevJob.timeoutId);
-    prevJob.timeoutId = null;
-  }
 
   io.to(code).emit('action-started', {
     playerId, fromX, fromY, tileX, tileY, action, duration,
@@ -138,6 +132,7 @@ export function applyTileEffect(io, socket, room, code, data) {
     });
 
     trackEvent(room, playerId, 'plant');
+    applyTeamEvent(io, code, room, 'plant');
 
     // ПРОФИЛЬ: добавляем вид в коллекцию, если новый
     if (!room.collection.has(seedId)) {
@@ -166,6 +161,7 @@ export function applyTileEffect(io, socket, room, code, data) {
     const waterDuration = 60000 * (1 + roleBonus.waterDuration);
     waterTile(room.garden, key, waterDuration);
     trackEvent(room, playerId, 'water');
+    applyTeamEvent(io, code, room, 'water');
   } else if (action === 'harvest') {
     if (!tile || stage !== 3) {
       socket.emit('action-rejected', { key, action, reason: 'Растение ещё не созрело' });
@@ -197,16 +193,46 @@ export function applyTileEffect(io, socket, room, code, data) {
       }
     }
 
+    // Кооперативная синергия: соседнее совместимое действие даёт механический бонус.
+    // (harvest рядом с harvest/water/plant) -> +15% монет сборщику и небольшой бонус помощнику.
+    let synergyApplied = false;
+    let helperPid = null;
+    if (harvestedSeed != null) {
+      const neighbors = [`${tileX - 1},${tileY}`, `${tileX + 1},${tileY}`,
+                         `${tileX},${tileY - 1}`, `${tileX},${tileY + 1}`];
+      for (const [pid, j] of room.playerJobs.entries()) {
+        if (pid === playerId) continue;
+        if (!j || !neighbors.includes(j.tileKey)) continue;
+        if (j.action === 'harvest' || j.action === 'water' || j.action === 'plant') {
+          synergyApplied = true;
+          helperPid = pid;
+          break;
+        }
+      }
+    }
+
+    if (synergyApplied) {
+      basePrice = Math.round(basePrice * 1.15);
+    }
     earnedCoins = Math.round(basePrice * (1 + incomeBonus));
     room.coins += earnedCoins;
+    if (synergyApplied && helperPid) {
+      const neighborReward = getSynergyNeighborReward(basePrice);
+      room.coins += neighborReward;
+      addCoins(helperPid, neighborReward);
+      io.to(code).emit('activity-result', {
+        message: `🤝 Синергия! Помощь соседу: +${neighborReward} монет`
+      });
+    }
 
     if (!room.tree) room.tree = { level: 0, progress: 0, nextLevelAt: 50 };
     room.tree.progress += 1;
     if (room.tree.progress >= room.tree.nextLevelAt) {
       room.tree.level += 1;
       room.tree.progress = 0;
-      room.tree.nextLevelAt = Math.floor(room.tree.nextLevelAt * TREE_NEXT_LEVEL_MULT);
+      room.tree.nextLevelAt = getNextTreeLevelAt(room.tree.nextLevelAt);
       io.to(code).emit('tree-level-up', { level: room.tree.level });
+      io.to(code).emit('activity-result', { message: `🌳 Командное дерево выросло до уровня ${room.tree.level}!` });
     }
 
     trackEvent(room, playerId, 'harvest');
@@ -227,14 +253,25 @@ export function applyTileEffect(io, socket, room, code, data) {
         broadcastCollection(io, code, room);
       }
 
-      // СТРАХОВОЧНАЯ СЕТКА: 20% шанс вернуть семя
+      // СТРАХОВОЧНАЯ СЕТКА: шанс вернуть семя
       if (Math.random() < HARVEST_MUTATION_RETURN_CHANCE) {
         room.inventory[harvestedSeed] = (room.inventory[harvestedSeed] || 0) + 1;
         broadcastInventory(io, code, room);
         socket.emit('activity-result', { message: '✨ Бонус: семя вернулось в инвентарь!' });
       }
+      // Доп. бонус при кооперативной синергии
+      if (synergyApplied) {
+        if (Math.random() < 0.20) {
+          room.inventory[harvestedSeed] = (room.inventory[harvestedSeed] || 0) + 1;
+          broadcastInventory(io, code, room);
+        }
+        io.to(code).emit('activity-result', {
+          message: '🤝 Синергия! Сосед помогает — +15% монет и шанс вернуть семя'
+        });
+      }
     }
   }
+
 
   const updated = room.garden.get(key);
   const { stage: newStage, progress } = computeState(updated, Date.now(), teamBonus, phaseMult);
@@ -383,4 +420,32 @@ export function handlePetAnswer(io, socket, room, code, data) {
       hatched: result.hatched
     });
   }
+}
+
+export function handleSellSeed(io, socket, room, code, data) {
+  const playerId = socket.handshake.auth.playerId || socket.id;
+  const rawSeedId = data?.seedId;
+  const seedId = (typeof rawSeedId === 'number' || typeof rawSeedId === 'string') ? String(rawSeedId) : null;
+  if (seedId == null) return;
+
+  // Find seed in player's inventory (keys may be numeric or string)
+  const invKey = room.inventory[seedId] != null ? seedId : (room.inventory[Number(seedId)] != null ? Number(seedId) : null);
+  if (invKey == null) {
+    socket.emit('sell-seed-result', { success: false, message: 'У вас нет такого семени' });
+    return;
+  }
+
+  // Sell price: derived from real plant value so rare species are not sold for floor price
+  const plant = getPlant(Number(invKey));
+  const sellPrice = getSeedSellPrice(plant?.price ?? 6);
+
+  room.coins += sellPrice;
+  room.inventory[invKey]--;
+  if (room.inventory[invKey] <= 0) delete room.inventory[invKey];
+
+  broadcastCoins(io, code, room);
+  broadcastInventory(io, code, room);
+
+  trackEvent(room, playerId, 'sellSeed');
+  socket.emit('sell-seed-result', { success: true, coins: sellPrice, message: `Продали семя за ${sellPrice} 🪙` });
 }

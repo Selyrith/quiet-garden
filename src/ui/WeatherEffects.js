@@ -15,6 +15,10 @@ export class WeatherEffects {
     this.weatherTint = scene.add.rectangle(0, 0, this.cam.width, this.cam.height, 0x000000, 0)
       .setOrigin(0).setDepth(81);
 
+    // Лужи/рябь при дожде (лёгкая графика, без postFX)
+    this.puddles = scene.add.graphics().setDepth(82);
+    this._puddleT = 0;
+
     // 2. ДОЖДЬ
     this.rain = scene.add.particles(0, 0, 'raindrop', {
       x: { min: 0, max: this.cam.width },
@@ -114,6 +118,20 @@ export class WeatherEffects {
       this.currentWeather = world.weather.id;
       this.setWeather(this.currentWeather);
     }
+    // Анимируем лёгкую рябь/лужи при дожде
+    if (this.currentWeather === 'rain') {
+      this._puddleT += 0.05;
+      this.puddles.clear();
+      const w = this.cam.width, h = this.cam.height;
+      for (let i = 0; i < 6; i++) {
+        const px = (w * (i + 1)) / 7 + Math.sin(this._puddleT + i) * 6;
+        const py = h * 0.75 + (i % 3) * 18;
+        this.puddles.fillStyle(0x6fb7e8, 0.12 + 0.04 * Math.sin(this._puddleT * 2 + i));
+        this.puddles.fillEllipse(px, py, 60 + i * 6, 18 + (i % 2) * 4);
+      }
+    } else if (this.puddles) {
+      this.puddles.clear();
+    }
 
     // 2. Сезон (снег зимой)
     if (this.currentSeason !== world.season.id) {
@@ -140,11 +158,13 @@ export class WeatherEffects {
     // Сбрасываем предыдущие твины
     this.scene.tweens.killTweensOf([this.rain, this.fog, this.weatherTint]);
 
+    // СНАЧАЛА сбрасываем дождь и туман во всех случаях
+    this.scene.tweens.add({ targets: this.rain, alpha: 0, duration: 1000 });
+    this.scene.tweens.add({ targets: this.fog, alpha: 0, duration: 1000 });
+
     // Дождь
-    const isRain = weatherId === 'rain';
-    this.scene.tweens.add({ targets: this.rain, alpha: isRain ? 1 : 0, duration: 1000 });
-    
-    if (isRain) {
+    if (weatherId === 'rain') {
+      this.scene.tweens.add({ targets: this.rain, alpha: 1, duration: 1000 });
       this.weatherTint.setFillStyle(0x1a2b3c); // Темно-синий
       this.scene.tweens.add({ targets: this.weatherTint, alpha: 0.35, duration: 1500 });
     } 
@@ -156,13 +176,11 @@ export class WeatherEffects {
     } 
     // Облачно
     else if (weatherId === 'cloudy') {
-      this.scene.tweens.add({ targets: this.fog, alpha: 0, duration: 1000 });
       this.weatherTint.setFillStyle(0x555555); // Легкое затемнение
       this.scene.tweens.add({ targets: this.weatherTint, alpha: 0.15, duration: 1500 });
     } 
     // Солнечно
     else {
-      this.scene.tweens.add({ targets: this.fog, alpha: 0, duration: 1000 });
       this.scene.tweens.add({ targets: this.weatherTint, alpha: 0, duration: 1500 });
     }
   }

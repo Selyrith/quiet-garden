@@ -134,8 +134,9 @@ export class BookOverlay extends Phaser.GameObjects.Container {
     this.bookContainer.add([this.chaptersHit, this.chaptersBtn, this.plantsHit, this.plantsBtn]);
 
     const closePad = 18;
-    const closeX = scene.scale.width / 2 - closePad - 22;
-    const closeY = -scene.scale.height / 2 + closePad + 22;
+    // Use book container coordinates (book is centered at 0,0 in bookContainer)
+    const closeX = this.bookW / 2 - closePad - 22;
+    const closeY = -this.bookH / 2 + closePad + 22;
     this.closeHit = scene.add.rectangle(closeX, closeY, 46, 46, UNIFIED.color).setInteractive({ useHandCursor: true });
     this.closeHit.setStrokeStyle(2, UNIFIED.colorHi);
     this.closeBg = scene.add.circle(closeX, closeY, 23, UNIFIED.colorLo, 0.95);

@@ -1,5 +1,6 @@
 import { getStage, waterTile } from './garden.js';
 import { MAX_ACTIVITIES, SPAWN_MIN_MS, SPAWN_MAX_MS } from '../shared/balance.js';
+import { getGrowthMultiplier } from '../shared/world.js';
 
 export { MAX_ACTIVITIES, SPAWN_MIN_MS, SPAWN_MAX_MS };
 
@@ -27,7 +28,7 @@ export function createActivity(type, tileX, tileY) {
   };
 }
 
-export function pickSpawn(garden, activities) {
+export function pickSpawn(garden, activities, teamBonus = 0, phaseGrowthMult = 1) {
   const occupied = new Set();
   activities.forEach((a) => occupied.add(`${a.tileX},${a.tileY}`));
 
@@ -37,7 +38,8 @@ export function pickSpawn(garden, activities) {
 
   garden.forEach((tile, key) => {
     if (occupied.has(key)) return;
-    const stage = getStage(tile);
+    // Используем phaseMult/teamBonus как в тике комнаты
+    const stage = getStage(tile, Date.now(), teamBonus, phaseGrowthMult);
     if (stage === -1) empty.push(key);
     else if (stage >= 0 && stage < 3) growing.push(key);
     else if (stage === 3) ripe.push(key);
@@ -58,7 +60,7 @@ export function pickSpawn(garden, activities) {
   return { type: chosen.type, tileX: x, tileY: y };
 }
 
-export function applyActivityEffect(room, activity, teamBonus = 0) {
+export function applyActivityEffect(room, activity, teamBonus = 0, phaseGrowthMult = 1) {
   const now = Date.now();
   const result = { coins: 0, message: '', affectedTiles: [] };
 
@@ -78,7 +80,7 @@ export function applyActivityEffect(room, activity, teamBonus = 0) {
       result.message = 'Бабочка! +1 🪙, рост ускорен';
       room.garden.forEach((tile, key) => {
         if (!tile) return;
-        const stage = getStage(tile, now, teamBonus);
+        const stage = getStage(tile, now, teamBonus, phaseGrowthMult);
         if (stage >= 0 && stage < 3) {
           waterTile(room.garden, key, 30000);
           result.affectedTiles.push(key);
@@ -97,7 +99,7 @@ export function applyActivityEffect(room, activity, teamBonus = 0) {
           const key = `${nx},${ny}`;
           const tile = room.garden.get(key);
           if (!tile) continue;
-          const stage = getStage(tile, now, teamBonus);
+          const stage = getStage(tile, now, teamBonus, phaseGrowthMult);
           if (stage >= 0 && stage < 3) {
             waterTile(room.garden, key, 60000);
             result.affectedTiles.push(key);

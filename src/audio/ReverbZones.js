@@ -2,6 +2,7 @@
  * Реверб-зоны через ConvolverNode.
  * Импульсные отклики загружаются из /assets/audio/ir_*.
  * Переключение зоны кроссфейдит gain convolver-а за 0.5 с.
+ * Dry/wet routing: source -> dryGain -> destination + source -> convolver -> wetGain -> destination
  */
 export class ReverbZones {
   constructor(ctx, assetManager) {
@@ -15,12 +16,38 @@ export class ReverbZones {
     this.dry.gain.value = 1.0;
     this.wet.gain.value = 0.0;
 
-    this.convolver.connect(this.wet);
+    // Proper send/return routing: dry path + wet path both to destination
     this.dry.connect(this.ctx.destination);
+    this.convolver.connect(this.wet);
     this.wet.connect(this.ctx.destination);
 
     this.currentIr = null;
     this.irCache = new Map();
+  }
+
+  /**
+   * Get the dry gain node for connecting sources.
+   */
+  getDryGain() {
+    return this.dry;
+  }
+
+  /**
+   * Get the wet gain node for connecting sources directly to reverb.
+   */
+  getWetGain() {
+    return this.wet;
+  }
+
+  /**
+   * Connect an audio source through the reverb send/return.
+   * Source connects to both dry (direct) and wet (reverb) paths.
+   */
+  connectSource(source) {
+    // Dry path
+    source.connect(this.dry);
+    // Wet path (send to convolver)
+    source.connect(this.convolver);
   }
 
   /**

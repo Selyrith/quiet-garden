@@ -282,6 +282,10 @@ export const GameSceneNetwork = {
     s.on('activity-spawned', ({ activity }) => { if (this.activityLayer) this.activityLayer.add(activity); this.updateActivityCount(); });
     s.on('activity-removed', ({ activityId }) => { if (this.activityLayer) this.activityLayer.remove(activityId); this.updateActivityCount(); });
     s.on('activity-result', ({ message }) => { if (message) { this.sound.harvest(); this.showToast(message); } });
+    s.on('sell-seed-result', ({ success, message }) => {
+      if (message) this.showToast(message);
+      if (success) this.sound.harvest(); else this.sound.error();
+    });
 
     s.on('stage-updates', ({ updates }) => {
       for (const { key, stage, seed } of updates) {

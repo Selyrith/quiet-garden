@@ -75,10 +75,9 @@ export function computeState(tile, now = Date.now(), globalGrowthBonus = 0, phas
     effective = elapsed + boosted * WATER_BOOST_PER_SEC;
   }
   
-  // Применяем глобальный бонус команды (ускоряет эффективное время)
-  effective *= (1 + globalGrowthBonus);
-  // Применяем фазовый множитель роста (утро +10%, ночь slowed x0.65 и т.д.)
-  effective *= Math.max(0.3, phaseGrowthMult);
+  // Порядок важен: сначала глобальный бонус команды, затем фазовый множитель —
+  // ровно один раз, как видят UI и тик комнаты.
+  effective *= (1 + globalGrowthBonus) * Math.max(0.3, phaseGrowthMult);
 
   const perStage = tile.growSeconds / 3;
   const sf = Math.min(3, effective / perStage);

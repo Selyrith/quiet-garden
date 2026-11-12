@@ -1,7 +1,7 @@
 export const UPGRADES = [
-  { id: 'growth', name: 'Скорость роста', icon: '⚡', perLevel: 0.05, maxLevel: 10, unit: '−' },
-  { id: 'luck',   name: 'Удача',          icon: '🍀', perLevel: 0.03, maxLevel: 10, unit: '+' },
-  { id: 'income', name: 'Доход',          icon: '💰', perLevel: 0.05, maxLevel: 10, unit: '+' }
+  { id: 'growth', name: 'Скорость роста', icon: '⚡', perLevel: 0.05, maxLevel: 8, unit: '−' },
+  { id: 'luck',   name: 'Удача',          icon: '🍀', perLevel: 0.03, maxLevel: 8, unit: '+' },
+  { id: 'income', name: 'Доход',          icon: '💰', perLevel: 0.05, maxLevel: 8, unit: '+' }
 ];
 
 export function getUpgrade(id) {
@@ -10,7 +10,8 @@ export function getUpgrade(id) {
 
 export function getUpgradeCost(id, currentLevel) {
   const base = 100;
-  return Math.floor(base * Math.pow(1.7, currentLevel));
+  // Исправлена экспонента: 1.45^n вместо 1.7^n. maxLevel 8.
+  return Math.floor(base * Math.pow(1.45, currentLevel));
 }
 
 export function createDefaultUpgrades() {

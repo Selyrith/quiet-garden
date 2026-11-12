@@ -7,6 +7,7 @@ import { sound } from '../audio/SoundManager.js';
 import { AmbienceManager } from '../audio/AmbienceManager.js';
 import { drawBackground, updateSky } from '../ui/Background.js';
 import { createWorldTint, applyWorldTint, worldIconsString } from '../ui/WorldTint.js';
+import { createVignette } from '../ui/Vignette.js';
 import { WeatherEffects } from '../ui/WeatherEffects.js';
 import { AmbientEffects } from '../ui/AmbientEffects.js';
 import { drawGrassTufts, createWetOverlay, updateGrassWind } from '../ui/TileDecor.js';
@@ -146,6 +147,7 @@ export default class GameScene extends Phaser.Scene {
 
     this.bg = drawBackground(this);
     this.worldTint = createWorldTint(this);
+    this.vignette = createVignette(this);
 
     // Партикл эмиттер для искр (один раз, вместо создания объектов каждый раз)
     this.sparkEmitter = this.add.particles(0, 0, 'spark_particle', {
@@ -167,6 +169,7 @@ export default class GameScene extends Phaser.Scene {
 
     this.drawGrid();
     this.activityLayer = new ActivityLayer(this, this.tileSize, this.tiles);
+    this.createGardenDecor();
     this.avatarLayer = this.add.container(0, 0).setDepth(250);
 
     this.treeHit = this.add.rectangle(0, 0, 80, 120, 0x000000, 0.001)
@@ -333,10 +336,19 @@ export default class GameScene extends Phaser.Scene {
 
     this.gridOrigin = { x: offsetX, y: offsetY };
 
-    // Деревянная рамка вокруг всего сада
-    this.savedFrameRect = this.add.rectangle(offsetX + totalSize / 2, offsetY + totalSize / 2, totalSize + 12, totalSize + 12, 0x3e2723)
+    // Деревянная рамка вокруг всего сада + дорожки между грядками (cozy frame)
+    this.savedFrameRect = this.add.rectangle(offsetX + totalSize / 2, offsetY + totalSize / 2, totalSize + 16, totalSize + 16, 0x3e2723)
       .setStrokeStyle(4, 0x8d6e63)
       .setDepth(0);
+    if (!this.gardenPaths) this.gardenPaths = this.add.graphics().setDepth(0);
+    this.gardenPaths.clear();
+    this.gardenPaths.lineStyle(2, 0xc9a884, 0.28);
+    this.gardenPaths.strokeRoundedRect(offsetX - 3, offsetY - 3, totalSize + 6, totalSize + 6, 10);
+    this.gardenPaths.lineStyle(1, 0x8d6e63, 0.18);
+    for (let i = 1; i < GRID; i++) {
+      this.gardenPaths.lineBetween(offsetX + i * this.tileSize, offsetY + 2, offsetX + i * this.tileSize, offsetY + totalSize - 2);
+      this.gardenPaths.lineBetween(offsetX + 2, offsetY + i * this.tileSize, offsetX + totalSize - 2, offsetY + i * this.tileSize);
+    }
 
     for (let y = 0; y < GRID; y++) {
       for (let x = 0; x < GRID; x++) {
@@ -394,7 +406,7 @@ export default class GameScene extends Phaser.Scene {
     // через setStrokeStyle (подсветка ожидания действия, цвет растения и т.п.).
     // Прозрачная заливка — текстура земли просвечивает.
     const rect = this.add.rectangle(cx + size / 2, cy + size / 2, size - 4, size - 4, 0x000000, 0)
-      .setStrokeStyle(2, 0x3e2723)
+      .setStrokeStyle(2, 0x5d4037)
       .setDepth(2);
 
     const barBg = this.add.rectangle(cx + size / 2, cy + size - 8, size - 12, 4, 0x1a1a1a, 0.7).setDepth(6);
@@ -454,8 +466,9 @@ export default class GameScene extends Phaser.Scene {
       const label = this.add.text(x, y - 8, tool.label, { fontSize: '26px' })
         .setOrigin(0.5).setDepth(151);
 
+      const isSmallScreen = this.scale.width < 520;
       const name = this.add.text(x, y + 18, tool.name, {
-        fontSize: '10px', color: '#94a3b8', fontStyle: 'bold'
+        fontSize: isSmallScreen ? '12px' : '10px', color: '#94a3b8', fontStyle: 'bold'
       }).setOrigin(0.5).setDepth(151);
 
       const hit = this.add.rectangle(x, y, w, h, 0x000000, 0.001)
@@ -981,7 +994,6 @@ export default class GameScene extends Phaser.Scene {
     updateSky(this, this.bg, world);
     applyWorldTint(this, this.worldTint, world);
     if (this.weather && this.weather.update) this.weather.update(world);
-    if (this.ambient && this.ambient.update) this.ambient.update(world);
     if (this.ambience && this.ambience.update) this.ambience.update(world);
     // Реверб-зона по фазе мира
     if (this.sound) {
@@ -992,6 +1004,56 @@ export default class GameScene extends Phaser.Scene {
     if (this.topBar && this.topBar.world) {
       this.topBar.world.setText(worldIconsString(world));
     }
+  }
+
+  createGardenDecor() {
+    // Cozy environment: pond, lanterns, bench, fence corners (graphics, no heavy assets)
+    const totalSize = this.tileSize * GRID;
+    const offsetX = (this.scale.width - totalSize) / 2;
+    const offsetY = (this.scale.height - totalSize) / 2 - 10;
+    const g = this.add.graphics().setDepth(0);
+
+    // Пруд в нижнем-правом углу сада (мягкий овал с бликами)
+    const pondX = offsetX + totalSize + 40;
+    const pondY = offsetY + totalSize - 20;
+    g.fillStyle(0x3f7fbf, 0.35);
+    g.fillEllipse(pondX, pondY, 120, 70);
+    g.fillStyle(0x6fb7e8, 0.25);
+    g.fillEllipse(pondX - 10, pondY - 6, 80, 40);
+    g.lineStyle(2, 0x2c5f8a, 0.25);
+    g.strokeEllipse(pondX, pondY, 120, 70);
+
+    // Фонарики у дорожек (тёплые точки света, без postFX)
+    const lanterns = [
+      [offsetX - 18, offsetY + 20],
+      [offsetX + totalSize + 18, offsetY + 40],
+      [offsetX - 18, offsetY + totalSize - 40]
+    ];
+    for (const [lx, ly] of lanterns) {
+      g.fillStyle(0xfff3b0, 0.25);
+      g.fillCircle(lx, ly, 18);
+      g.fillStyle(0xffd54f, 0.5);
+      g.fillCircle(lx, ly, 8);
+      g.fillStyle(0x5d4037, 1);
+      g.fillRect(lx - 2, ly + 6, 4, 16);
+    }
+
+    // Скамейка у пруда
+    const bx = pondX - 70, by = pondY - 40;
+    g.fillStyle(0x8d6e63, 1);
+    g.fillRoundedRect(bx, by, 44, 10, 3);
+    g.fillRect(bx + 4, by + 10, 4, 10);
+    g.fillRect(bx + 36, by + 10, 4, 10);
+
+    // Лёгкий забор по углам (декоративные столбики)
+    g.fillStyle(0x6d4c41, 0.9);
+    for (let i = 0; i <= 8; i += 2) {
+      const fx = offsetX + i * this.tileSize;
+      g.fillRect(fx, offsetY - 10, 6, 10);
+      g.fillRect(fx, offsetY + totalSize, 6, 10);
+    }
+
+    this.gardenDecor = g;
   }
 
   showEmote(playerId, emote) {
@@ -1232,7 +1294,7 @@ export default class GameScene extends Phaser.Scene {
 
   unmarkPending(tileKey) {
     const tile = this.tiles.get(tileKey);
-    if (tile && tile.rect) tile.rect.setStrokeStyle(2, 0x3e2723);
+    if (tile && tile.rect) tile.rect.setStrokeStyle(2, 0x5d4037);
   }
 
   drawTeamTree(level) {

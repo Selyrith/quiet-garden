@@ -28,7 +28,7 @@ import { ROLES } from '../shared/roles.js';
 import { saveRooms, loadRooms, loadSingleRoom } from './save.js';
 import {
   handleTileAction, handleActivityAction, handleUpgradeBuy, handleBuyPack, handleSetMessage,
-  handlePetAnswer
+  handlePetAnswer, handleSellSeed
 } from './handlers.js';
 import {
   getProfile, createProfile, updateProfile, addToCollection, addCoins,
@@ -186,9 +186,10 @@ io.on('connection', (socket) => {
     let readyCount = 0;
     let growingCount = 0;
     const teamBonus = getTeamGrowthBonus(room);
+    const phaseMult = world.phase.growthMult;
     room.garden.forEach((tile) => {
       if (!tile) return;
-      const stage = getStage(tile, now, teamBonus);
+      const stage = getStage(tile, now, teamBonus, phaseMult);
       if (stage === 3) readyCount++;
       else if (stage >= 0) growingCount++;
     });
@@ -306,6 +307,14 @@ io.on('connection', (socket) => {
     const room = rooms.get(code);
     if (!room) return;
     handleBuyPack(io, socket, room, code, data);
+  });
+
+  on('sell-seed', (data) => {
+    const code = socketRoom.get(pid);
+    if (!code) return;
+    const room = rooms.get(code);
+    if (!room) return;
+    handleSellSeed(io, socket, room, code, data);
   });
 
   on('set-message', (data) => {

@@ -211,7 +211,7 @@ export class GoalsOverlay extends Phaser.GameObjects.Container {
     TREE_NODES.forEach((node) => {
       const key = node.check;
       const value = key === 'speciesCount'
-        ? (totals.speciesCount ?? 0)
+        ? (totals.speciesCount ?? room.collection?.size ?? 0)
         : (totals[key] ?? 0);
       const done = value >= node.target;
       const claimed = (this.goals.treeClaimed || []).includes(node.id);

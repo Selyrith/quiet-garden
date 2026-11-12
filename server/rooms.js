@@ -189,9 +189,12 @@ export function scheduleSpawn(io, code, room) {
   room.spawnTimer = setTimeout(() => {
     const r = rooms.get(code);
     if (!r) return;
-    const max = MAX_ACTIVITIES + (r.maxActivitiesBonus || 0);
+    // Слоты активностей = 1 + floor(игроков/2) — кооп-события не воруются
+    const max = 1 + Math.floor(r.players.size / 2) + (r.maxActivitiesBonus || 0);
     if (r.players.size > 0 && r.activities.size < max) {
-      const spawn = pickSpawn(r.garden, r.activities);
+      const teamBonus = getTeamGrowthBonus(r);
+      const phaseMult = (r.world && r.world.phase && r.world.phase.growthMult) || 1;
+      const spawn = pickSpawn(r.garden, r.activities, teamBonus, phaseMult);
       if (spawn) {
         const activity = createActivity(spawn.type, spawn.tileX, spawn.tileY);
         if (activity) {

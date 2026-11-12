@@ -40,7 +40,10 @@ export function getPlant(seed) {
   const rng = makeRng(safeSeed + 1000);
 
   const baseGrow = 60 + Math.floor(rng() * 60);
-  const basePrice = 3 + Math.floor(rng() * 4);
+  // Базовая цена: 6–11 монет за обычное растение.
+  // Старый диапазон 3–6 делал базовый пак (50 монет) убыточным:
+  // 3 семени ≈ 15 монет урожая при цене пака 50.
+  const basePrice = 6 + Math.floor(rng() * 6);
   const growSeconds = Math.round(baseGrow * rarity.growMult);
   const price = Math.round(basePrice * rarity.priceMult);
 

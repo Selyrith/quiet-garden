@@ -1,20 +1,35 @@
 /**
  * Общие цели комнаты. Открываются последовательно.
+ * Кооперативные вехи: садоводы вместе сажают, ухаживают, собирают и открывают новое.
  */
 export const TEAM_GOALS = [
+  {
+    id: 'plant30',
+    text: 'Посадите 30 растений вместе',
+    target: 30,
+    event: 'plant',
+    reward: { coins: 75, text: '+75 монет' }
+  },
   {
     id: 'harvest20',
     text: 'Соберите 20 растений вместе',
     target: 20,
     event: 'harvest',
-    reward: { coins: 100, text: '+100 монет' }
+    reward: { coins: 120, text: '+120 монет' }
+  },
+  {
+    id: 'water20',
+    text: 'Полейте 20 растений вместе',
+    target: 20,
+    event: 'water',
+    reward: { coins: 60, text: '+60 монет' }
   },
   {
     id: 'activity10',
     text: 'Поймайте 10 активностей вместе',
     target: 10,
     event: 'activity',
-    reward: { coins: 50, text: '+50 монет' }
+    reward: { coins: 60, text: '+60 монет' }
   },
   {
     id: 'species30',

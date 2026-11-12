@@ -1,12 +1,17 @@
-node_modules/
-dist/
-.env
-.env.local
-.env.*.local
 
 # Сохранения игры (комнаты и профили игроков) — не в репозиторий
-data/
 *.log
 .DS_Store
-.vscode/
+.dsh-code-index/
+.dsh/
+.env
+.env.*.local
+.env.local
+.github_token
 .idea/
+.vscode/
+data/
+dist/
+doublecheck-report.md
+doublecheck-spec.md
+node_modules/
