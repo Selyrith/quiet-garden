@@ -19,7 +19,7 @@ import { createAvatar, tintAvatar, updateAvatarLabel } from '../ui/PlayerAvatar.
 import { avatarStandPosition } from '../ui/avatar-layout.js';
 import { generateAllPlantTextures } from '../ui/PlantTextureFactory.js';
 import { escapeHtml } from '../ui/escapeHtml.js';
-import { UNIFIED } from '../ui/ui-unified.js';
+import { DS, drawRoundedRect, drawShadowedRect, createButtonStyle } from '../ui/DesignSystem.js';
 import { getDailyQuestion } from '../../shared/pets.js';
 import { Onboarding } from '../ui/Onboarding.js';
 import { GenderSelectionOverlay } from '../ui/GenderSelectionOverlay.js';
@@ -204,19 +204,20 @@ export default class GameScene extends Phaser.Scene {
 
     // Всплывающие уведомления (под teamBar)
     this.toastText = this.add.text(this.scale.width / 2, 200, '', {
-      fontSize: '16px',
-      color: '#fbbf24',
-      fontStyle: 'bold',
-      backgroundColor: '#0f172acc',
-      padding: { x: 14, y: 8 },
+      fontSize: `${DS.font.size.sm}px`,
+      color: DS.colors.brand.gold,
+      fontFamily: DS.font.family.base,
+      fontWeight: DS.font.weight.bold,
+      backgroundColor: `${DS.colors.overlay.heavy}`,
+      padding: { x: DS.spacing.md, y: DS.spacing.xs },
       wordWrap: { width: Math.min(this.scale.width - 40, 400) },
       align: 'center'
-    }).setOrigin(0.5).setDepth(300).setAlpha(0);
+    }).setOrigin(0.5).setDepth(DS.depth.toast).setAlpha(0);
 
     // Список игроков (левый верхний угол, под HUD)
     this.playerListText = this.add.text(10, 95, '', {
-      fontSize: '11px', color: '#e2e8f0', fontStyle: 'bold'
-    }).setDepth(102);
+      fontSize: `${DS.font.size.xs}px`, color: DS.colors.text.muted, fontFamily: DS.font.family.base, fontWeight: DS.font.weight.medium
+    }).setDepth(DS.depth.hud + 1);
 
     // Деревянная табличка для записок (центр сверху, над всеми грядками)
     const spW = 200, spH = 24;
@@ -225,13 +226,10 @@ export default class GameScene extends Phaser.Scene {
 
     this.signpostBg = this.add.graphics();
     this.signpostBg.setDepth(1000).setScrollFactor(0);
-    this.signpostBg.fillStyle(0xd7ccc8, 1);
-    this.signpostBg.fillRoundedRect(spX - spW / 2, spY, spW, spH, 6);
-    this.signpostBg.lineStyle(2, 0x5d4037);
-    this.signpostBg.strokeRoundedRect(spX - spW / 2, spY, spW, spH, 6);
+    drawRoundedRect(this.signpostBg, spX - spW / 2, spY, spW, spH, DS.radius.sm, DS.colors.bg.elevated, 1, DS.colors.ui.border, 2);
 
     this.signpostText = this.add.text(spX, spY + spH / 2, this.formatSignpost(''), {
-      fontSize: '10px', color: '#3e2723', fontFamily: 'Georgia, serif', align: 'center'
+      fontSize: `${DS.font.size.xs}px`, color: DS.colors.text.secondary, fontFamily: DS.font.family.title, align: 'center'
     }).setOrigin(0.5).setDepth(1001).setScrollFactor(0);
 
     // Прозрачная зона клика — ровно под визуал
@@ -247,14 +245,15 @@ export default class GameScene extends Phaser.Scene {
 
     // 3. Подсказка (внизу, над кнопками)
     this.hintText = this.add.text(this.scale.width / 2, this.scale.height - 180, '', {
-      fontSize: '14px',
-      color: '#ffffff',
-      fontStyle: 'bold',
-      backgroundColor: '#00000088',
-      padding: { x: 10, y: 4 }
-    }).setOrigin(0.5).setDepth(120);
+      fontSize: `${DS.font.size.sm}px`,
+      color: DS.colors.text.primary,
+      fontFamily: DS.font.family.base,
+      fontWeight: DS.font.weight.medium,
+      backgroundColor: `${DS.colors.overlay.medium}`,
+      padding: { x: DS.spacing.md, y: DS.spacing.xs }
+    }).setOrigin(0.5).setDepth(DS.depth.hint);
 
-    this.createToolButtons();
+    GameSceneUi.createToolButtons.call(this);
 
     this.inventoryBar = new InventoryBar(this, this.scale.height - 60);
     this.inventoryBar.container.setVisible(false);
@@ -1146,10 +1145,7 @@ export default class GameScene extends Phaser.Scene {
       const spX = w / 2;
       const spY = (this.gridOrigin ? this.gridOrigin.y : h / 2) - spH - 8;
       this.signpostBg.clear();
-      this.signpostBg.fillStyle(0xd7ccc8, 1);
-      this.signpostBg.fillRoundedRect(spX - spW / 2, spY, spW, spH, 6);
-      this.signpostBg.lineStyle(2, 0x5d4037);
-      this.signpostBg.strokeRoundedRect(spX - spW / 2, spY, spW, spH, 6);
+      drawRoundedRect(this.signpostBg, spX - spW / 2, spY, spW, spH, DS.radius.sm, DS.colors.bg.elevated, 1, DS.colors.ui.border, 2);
       if (this.signpostText) this.signpostText.setPosition(spX, spY + spH / 2);
       if (this.signpostHit) {
         this.signpostHit.setPosition(spX, spY + spH / 2);
@@ -1159,18 +1155,22 @@ export default class GameScene extends Phaser.Scene {
 
     if (this.teamTree) this.drawTeamTree(this.teamTreeLevel || 0);
 
-    const totalW = TOOLS.length * 70;
-    const startX = (w - totalW) / 2 + 35;
-    const toolBarY = h - 130;
-    TOOLS.forEach((tool, i) => {
-      const btn = this.toolButtons.get(tool.id);
-      if (!btn) return;
-      const x = startX + i * 70;
-      btn.gfx.setPosition(x, toolBarY);
-      btn.label.setPosition(x, toolBarY - 8);
-      btn.name.setPosition(x, toolBarY + 18);
-      if (btn.hit) btn.hit.setPosition(x, toolBarY);
-    });
+    // Tool buttons are now managed by GameSceneUi - they use containers with hit areas
+    if (this.toolButtons) {
+      const btnSize = 56;
+      const gap = 8;
+      const totalW = 4 * btnSize + 3 * gap;
+      const startX = w / 2 - totalW / 2 + btnSize / 2;
+      const y = h - 80;
+      let i = 0;
+      this.toolButtons.forEach((btn, id) => {
+        if (!btn.container) return;
+        const x = startX + i * (btnSize + gap);
+        btn.container.setPosition(x, y);
+        if (btn.hit) btn.hit.setPosition(x, y);
+        i++;
+      });
+    }
   }
 
   getTileCenter(tileX, tileY) {
