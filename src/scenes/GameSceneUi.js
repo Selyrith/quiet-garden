@@ -123,8 +123,11 @@ export const GameSceneUi = {
     }
     this.selectedTool = toolId;
 
-    this.toolButtons.forEach(({ bg, icon, label, cfg, drawBtn }, id) => {
+    this.toolButtons.forEach(({ container, bg, icon, label, cfg, drawBtn }, id) => {
       const isActive = id === toolId;
+      
+      // Показываем контейнер выбранного инструмента, скрываем остальные
+      container.setVisible(true);
       
       // Сброс hover-масштаба
       bg.setScale(1);

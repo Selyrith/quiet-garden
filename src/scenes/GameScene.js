@@ -255,6 +255,8 @@ export default class GameScene extends Phaser.Scene {
 
     GameSceneUi.createToolButtons.call(this);
     this.selectTool = GameSceneUi.selectTool.bind(this);
+    this.openMenu = GameSceneUi.openMenu.bind(this);
+    this.copyRoomCode = GameSceneActions.copyRoomCode.bind(this);
 
     this.inventoryBar = new InventoryBar(this, this.scale.height - 60);
     this.inventoryBar.container.setVisible(false);
