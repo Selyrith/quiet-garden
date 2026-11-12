@@ -16,3 +16,4 @@ doublecheck-report.md
 doublecheck-spec.md
 node_modules/
 .dshwolf/
+.iterate/
