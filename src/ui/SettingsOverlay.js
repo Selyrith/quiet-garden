@@ -20,7 +20,7 @@ export class SettingsOverlay {
       .setDepth(310);
 
     this.closeHit = scene.add.rectangle(w / 2, h / 2, w, h, 0x5c4a3a, 0.001)
-      .setDepth(320);
+      .setDepth(320)
       .setInteractive();
     this.closeHit.on('pointerdown', (pointer) => {
       const hw = panelW / 2;
