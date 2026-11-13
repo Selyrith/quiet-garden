@@ -39,14 +39,17 @@ export function createAvatar(scene, playerId, genderId, roleId, tileSize, nickna
 
   const container = scene.add.container(0, 0).setDepth(250);
 
-  // Тень под ногами
-  const shadow = scene.add.ellipse(0, layout.shadowY, layout.shadowWidth, layout.shadowHeight, 0x000000)
-    .setAlpha(0.25);
+  // Тень под ногами: тёплая (Rich Soil), а не чёрная — чёрная на тёплой
+  // земле выглядела как дырка в полу. Два слоя дают мягкий контакт.
+  const shadowFar = scene.add.ellipse(0, layout.shadowY + 1, layout.shadowWidth * 1.25, layout.shadowHeight * 1.3, 0x3D2E20)
+    .setAlpha(0.12);
+  const shadow = scene.add.ellipse(0, layout.shadowY, layout.shadowWidth, layout.shadowHeight, 0x3D2E20)
+    .setAlpha(0.30);
 
   const avatarImg = scene.add.image(0, 0, avatarTextureByGender[genderId] || 'avatar-male')
     .setDisplaySize(layout.size, layout.size);
 
-  container.add([shadow, avatarImg]);
+  container.add([shadowFar, shadow, avatarImg]);
 
   // Подпись с ником (и короной у хоста) — чтобы было видно, кто где.
   const labelText = formatAvatarLabel(nickname, isHost);
@@ -82,6 +85,7 @@ export function createAvatar(scene, playerId, genderId, roleId, tileSize, nickna
   container.roleId = roleId;
   container.body = avatarImg;
   container.shadow = shadow;
+  container.shadowFar = shadowFar;
   container.label = label;
   container.nickname = nickname || '';
   container.isHost = !!isHost;

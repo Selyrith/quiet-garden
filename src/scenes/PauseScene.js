@@ -1,13 +1,15 @@
 import Phaser from 'phaser';
+import { DS } from '../ui/DesignSystem.js';
+import { openOverlay, createButton } from '../ui/ui-kit.js';
 
 /**
- * Параллельная сцена паузы. Не трогает GameScene — только рисует оверлей
- * и управляет переходом resume/stop.
+ * Пауза — отдельная сцена поверх замершего сада.
  *
- * Почему отдельная сцена, а не Container в GameScene?
- * Потому что scene.pause() отключает инпут и update у GameScene.
- * Overlay должен продолжать принимать клики и клавиши — для этого он
- * должен быть в активной сцене.
+ * Почему отдельная сцена: scene.pause() отключает инпут и update у
+ * GameScene, поэтому окно паузы должно жить в активной сцене.
+ *
+ * Визуально — то же окно, что и остальные (ui-kit), только без крестика
+ * в углу: здесь честнее один явный выбор «Продолжить».
  */
 export default class PauseScene extends Phaser.Scene {
   constructor() {
@@ -21,55 +23,63 @@ export default class PauseScene extends Phaser.Scene {
 
   create() {
     const cam = this.cameras.main;
-    const W = cam.width;
-    const H = cam.height;
+    this._destroyed = false;
 
-    this.add.rectangle(0, 0, W, H, 0x000000, 0.72).setOrigin(0).setInteractive();
-
-    this.add.text(W / 2, H * 0.32, 'Пауза', {
-      fontSize: '36px', color: '#fcf8f0', fontStyle: 'bold'
-    }).setOrigin(0.5).setShadow(0, 3, '#000000', 6);
-
-    this.add.text(W / 2, H * 0.4, 'Можно вернуться в любой момент', {
-      fontSize: '13px', color: '#cbd5e1'
-    }).setOrigin(0.5);
-
-    this._createButton(W / 2, H * 0.52, 'Продолжить', 0x2ecc71, () => this.resumeGame());
-    this._createButton(W / 2, H * 0.62, 'В меню', 0x475569, () => {
-      if (!this.socket) {
-        window.location.replace(window.location.origin + window.location.pathname);
-        return;
-      }
-      const done = () => {
-        window.location.replace(window.location.origin + window.location.pathname);
-      };
-      // Ждём подтверждения от сервера (макс 3с), чтобы точно выйти из комнаты
-      const timer = setTimeout(done, 3000);
-      this.socket.once('left-room', () => {
-        clearTimeout(timer);
-        done();
-      });
-      this.socket.emit('leave-room');
+    this.ui = openOverlay(this, {
+      title: 'Пауза',
+      subtitle: 'Сад подождёт — он никуда не спешит',
+      depth: DS.overlay.menu,
+      maxW: 400,
+      maxH: 440,
+      widthRatio: 0.9,
+      heightRatio: 0.7,
+      padding: 24,
+      closeOnScrim: false,
+      restoreSignpost: false,
     });
 
-    this.add.text(W / 2, H * 0.72, 'ESC — вернуться в игру', {
-      fontSize: '12px', color: '#94a3b8'
-    }).setOrigin(0.5);
+    const C = this.ui.content;
+
+    // Кнопка «Продолжить» — главное действие, крупная и первая.
+    const resume = createButton(this, C.left + C.width / 2, C.top + 44, C.width, 56, 'Продолжить', () => this.resumeGame(), {
+      variant: 'primary',
+      fontSize: DS.font.size.lg,
+    });
+    this.ui.body.add(resume);
+
+    // «В меню» — тихая, но с пояснением последствий.
+    const toMenu = createButton(this, C.left + C.width / 2, C.top + 118, C.width, 48, 'Выйти в меню', () => this.leaveRoom(), {
+      variant: 'ghost',
+      fontSize: DS.font.size.base,
+    });
+    this.ui.body.add(toMenu);
+
+    const hint = this.add.text(C.left + C.width / 2, C.top + 170, 'ESC или пробел — вернуться в игру', {
+      fontSize: `${DS.font.size.xs}px`,
+      fontFamily: DS.font.family.base,
+      color: DS.colors.text.muted,
+      align: 'center',
+    }).setOrigin(0.5, 0);
+    this.ui.body.add(hint);
 
     this.input.keyboard.on('keydown-ESC', () => this.resumeGame());
     this.input.keyboard.on('keydown-SPACE', () => this.resumeGame());
   }
 
-  _createButton(x, y, label, color, onClick) {
-    const w = Math.min(240, this.cameras.main.width - 60);
-    const h = 54;
-    const bg = this.add.rectangle(x, y, w, h, color)
-      .setStrokeStyle(2, 0xffffff, 0.85)
-      .setInteractive({ useHandCursor: true });
-    this.add.text(x, y, label, {
-      fontSize: '17px', color: '#fcf8f0', fontStyle: 'bold'
-    }).setOrigin(0.5);
-    bg.on('pointerdown', onClick);
+  leaveRoom() {
+    if (!this.socket) {
+      window.location.replace(window.location.origin + window.location.pathname);
+      return;
+    }
+    const done = () => {
+      window.location.replace(window.location.origin + window.location.pathname);
+    };
+    const timer = setTimeout(done, 3000);
+    this.socket.once('left-room', () => {
+      clearTimeout(timer);
+      done();
+    });
+    this.socket.emit('leave-room');
   }
 
   resumeGame() {

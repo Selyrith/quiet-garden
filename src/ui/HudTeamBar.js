@@ -3,14 +3,41 @@ import { DS } from './DesignSystem.js';
 
 export function createTeamGoalBar(scene) {
   const container = scene.add.container(0, 0).setDepth(DS.depth.hud + 5);
-  const bg = scene.add.rectangle(0, 0, 300, 26, 0x3d2e20, 0.9).setOrigin(0.5).setStrokeStyle(1, 0x8a7a66);
-  const barBg = scene.add.rectangle(-140, 0, 280, 14, 0x8a7a66, 0.4).setOrigin(0, 0.5);
-  const bar = scene.add.rectangle(-140, 0, 0, 14, 0xe8c55a).setOrigin(0, 0.5);
-  const text = scene.add.text(0, 0, '', { fontSize: '11px', color: '#fcf8f0', fontStyle: 'bold' }).setOrigin(0.5);
+
+  // Тёплая «деревянная» плашка вместо плоской чёрной полосы: у игры про сад
+  // HUD тоже должен быть из мира, а не из системного диалога.
+  const bg = scene.add.graphics();
+  bg.fillStyle(0x3D2E20, 0.9);
+  bg.fillRoundedRect(-152, -17, 304, 34, 14);
+  bg.lineStyle(2, 0xB08A57, 0.95);
+  bg.strokeRoundedRect(-152, -17, 304, 34, 14);
+
+  const barBg = scene.add.rectangle(-140, -1, 280, 13, 0x8A7A66, 0.45)
+    .setOrigin(0, 0.5)
+    .setStrokeStyle(1, 0x2C1B10, 0.5);
+  const bar = scene.add.rectangle(-140, -1, 0, 13, 0xE8C55A, 1)
+    .setOrigin(0, 0.5)
+    .setStrokeStyle(1.5, 0xB58F2E, 1);
+
+  const text = scene.add.text(0, -1, '', {
+    fontSize: `${DS.font.size.xs + 1}px`,
+    color: '#FFF6E0',
+    fontStyle: 'bold',
+    fontFamily: DS.font.family.base,
+  }).setOrigin(0.5);
+  text.setShadow(0, 1, 'rgba(28,18,10,0.85)', 2, false, true);
+
   // Подпись-подсказка под шкалой: объясняет правило частичного веса.
-  const hint = scene.add.text(0, 17, '', {
-    fontSize: '9px', color: '#d9c9b4', fontStyle: 'italic'
-  }).setOrigin(0.5).setAlpha(0.85);
+  const hint = scene.add.text(0, 22, '', {
+    fontSize: `${DS.font.size.xs}px`,
+    color: '#E8DCC8',
+    fontStyle: 'italic',
+    fontFamily: DS.font.family.base,
+    align: 'center',
+    // Без переноса длинная подсказка уезжала за края экрана и обрезалась.
+    wordWrap: { width: 292, useAdvancedWrap: true },
+  }).setOrigin(0.5, 0).setAlpha(0.95);
+
   container.add([bg, barBg, bar, text, hint]);
   container.setVisible(false);
   return { container, bg, barBg, bar, text, hint };

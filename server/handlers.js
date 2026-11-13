@@ -19,7 +19,7 @@ import { PACKS, rollPack } from '../shared/packs.js';
 import { getPlant } from '../shared/plants.js';
 import { ACTION_DURATION, HARVEST_MUTATION_RETURN_CHANCE, SEED_SELL_BACK_RATIO, getNextTreeLevelAt, getSeedSellPrice, getSynergyNeighborReward, getGardenRowIncomeBonus } from '../shared/balance.js';
 import {
-  addToCollection, addCoins, addInventory, incrementStat
+  addToCollection, incrementStat
 } from './player-profiles.js';
 
 function applyTeamEvent(io, code, room, event) {
@@ -42,7 +42,9 @@ export function handleTileAction(io, socket, room, code, data) {
   const playerId = socket.handshake.auth.playerId || socket.id;
 
   if (room.playerJobs.has(playerId)) {
-    socket.emit('action-rejected', { reason: 'Подождите, действие выполняется' });
+    // busy: true — клиент поймёт, что это дребезг тапа, а не ошибка игрока,
+    // и не будет показывать ошибку с откатом аватара.
+    socket.emit('action-rejected', { busy: true, reason: 'Подождите, действие выполняется' });
     return;
   }
 
@@ -226,7 +228,10 @@ export function applyTileEffect(io, socket, room, code, data) {
     if (synergyApplied && helperPid) {
       const neighborReward = getSynergyNeighborReward(basePrice);
       room.coins += neighborReward;
-      addCoins(helperPid, neighborReward);
+      // Кошелёк один — кошелёк сада (room.coins). Профильные монеты
+      // раньше пополнялись, но никогда не списывались: копился «второй
+      // кошелёк», которого игрок нигде не видит. Оставляем только статистику.
+      incrementStat(helperPid, 'helpedNeighbors');
       io.to(code).emit('activity-result', {
         message: `🤝 Синергия! Помощь соседу: +${neighborReward} монет`
       });
@@ -245,9 +250,9 @@ export function applyTileEffect(io, socket, room, code, data) {
     trackEvent(room, playerId, 'harvest');
     applyTeamEvent(io, code, room, 'harvest');
 
-    // ПРОФИЛЬ: начисление монет и статистика
+    // ПРОФИЛЬ: только статистика. Монеты живут в room.coins — иначе копится
+    // второй, «невидимый» кошелёк, который никогда не тратится.
     if (earnedCoins > 0) {
-      addCoins(playerId, earnedCoins);
       incrementStat(playerId, 'plantsHarvested');
     }
 
@@ -287,6 +292,9 @@ export function applyTileEffect(io, socket, room, code, data) {
     key, stage: newStage, progress, seed: updated?.seed ?? null,
     mutationIndex: updated?.mutationIndex ?? null,
     action, byPlayer: playerId, earnedCoins, harvestedSeed, harvestedMutIndex,
+    // Сколько грядка остаётся влажной — пусть клиент рисует ровно столько,
+    // сколько реально даёт сервер (с бонусом роли), а не свои 60 секунд.
+    wetUntil: updated?.wateredUntil ?? null,
     isNewSpecies: action === 'harvest' ? isNewSpecies : false
   });
 
@@ -303,7 +311,17 @@ export function handleActivityAction(io, socket, room, code, data) {
     socket.emit('activity-result', { message: 'Активность уже исчезла' });
     return;
   }
-  
+
+  // Протухшая активность не должна давать награду.
+  // Раньше проверялось только наличие в карте: вернувшись в игру через
+  // полчаса, игрок мог «собрать» давно истёкшую ворону и получить монеты.
+  if (activity.expiresAt && activity.expiresAt < Date.now()) {
+    room.activities.delete(activityId);
+    io.to(code).emit('activity-removed', { activityId });
+    socket.emit('activity-result', { message: 'Активность уже исчезла' });
+    return;
+  }
+
   const result = applyActivityEffect(room, activity, getTeamGrowthBonus(room));
   room.activities.delete(activityId);
   io.to(code).emit('activity-removed', { activityId });
@@ -380,7 +398,7 @@ export function handleBuyPack(io, socket, room, code, data) {
   
   // ПРОФИЛЬ: добавляем семена в личный инвентарь
   for (const seed of seeds) {
-    addInventory(playerId, seed, 1);
+    // Инвентарь — общий на сад (room.inventory). Профильный не нужен.
   }
 
   socket.emit('buy-pack-result', { success: true, seeds, message: 'Пак открыт!' });

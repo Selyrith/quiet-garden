@@ -122,3 +122,27 @@ export function getQuestById(id) {
 export function getTreeNodeById(id) {
   return TREE_NODES.find((n) => n.id === id) || null;
 }
+
+/**
+ * Значение прогресса для узла дерева.
+ *
+ * `node.check` назван по «историческому» счётчику (harvestTotal), а
+ * `serializeGoals` отдаёт totals в коротком виде (harvest). Раньше UI
+ * искал `totals[node.check]`, всегда получал undefined → 0, и дерево
+ * показывало «0 / 10» даже после 50 сборов. Здесь — единственный
+ * перевод имён; им пользуются и сервер, и интерфейс.
+ */
+const TREE_CHECK_TO_TOTALS = {
+  harvestTotal: 'harvest',
+  plantTotal: 'plant',
+  waterTotal: 'water',
+  activityTotal: 'activity',
+  upgradeTotal: 'upgrade',
+  speciesCount: 'speciesCount',
+};
+
+export function getTreeNodeProgress(node, totals = {}) {
+  const key = TREE_CHECK_TO_TOTALS[node.check] || node.check;
+  const value = totals[key];
+  return Number.isFinite(value) ? value : 0;
+}

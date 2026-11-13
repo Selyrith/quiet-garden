@@ -17,3 +17,4 @@ doublecheck-spec.md
 node_modules/
 .dshwolf/
 .iterate/
+.dsh-vision-router/

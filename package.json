@@ -23,9 +23,11 @@
     "socket.io-client": "^4.8.4"
   },
   "devDependencies": {
+    "@napi-rs/canvas": "^1.1.1",
     "concurrently": "^9.1.2",
     "jsdom": "^31.0.0",
     "phaser-test-utils": "^0.1.0",
+    "phaser3spectorjs": "^0.0.8",
     "vite": "^6.0.7",
     "vitest": "^5.1.0"
   }

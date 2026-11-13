@@ -8,6 +8,9 @@ export function setupGoalsHandlers(io, socket, deps) {
   const pid = socket.handshake.auth.playerId || socket.id;
 
   socket.on('daily-claim', () => {
+    // Ошибка внутри обработчика раньше уходила в никуда: кнопка «Забрать»
+    // просто не отвечала. Теперь игрок видит понятное сообщение.
+    try {
     const code = socketRoom.get(pid);
     if (!code) return;
     const room = rooms.get(code);
@@ -31,14 +34,24 @@ export function setupGoalsHandlers(io, socket, deps) {
     }
 
     // Async team buff logic
+    // БЫЛО: dailyVisitors копился, но никогда не сбрасывался — бафф «+10% на
+    // сутки» выдавался один раз за всё время существования сада (и продлевался
+    // при смене playerId). Теперь список обнуляется со сменой суток.
+    const DAY_MS = 86400000;
+    const today = Math.floor(Date.now() / DAY_MS);
+    if (room.team.visitorsDay !== today) {
+        room.team.visitorsDay = today;
+        room.team.dailyVisitors = [];
+    }
     if (!room.team.dailyVisitors) room.team.dailyVisitors = [];
     if (!room.team.dailyVisitors.includes(pid)) {
         room.team.dailyVisitors.push(pid);
-        if (room.team.dailyVisitors.length >= 2) {
-            room.team.teamBuff = { growth: 0.1, expiresAt: Date.now() + 86400000 };
-            io.to(code).emit('team-completed', { 
-                goal: 'Синергия команды', 
-                reward: '+10% к скорости роста на сутки' 
+        const buffAlive = room.team.teamBuff && room.team.teamBuff.expiresAt > Date.now();
+        if (room.team.dailyVisitors.length >= 2 && !buffAlive) {
+            room.team.teamBuff = { growth: 0.1, expiresAt: Date.now() + DAY_MS };
+            io.to(code).emit('team-completed', {
+                goal: 'Синергия команды',
+                reward: '+10% к скорости роста на сутки'
             });
         }
         broadcastTeam(io, code, room);
@@ -48,6 +61,10 @@ export function setupGoalsHandlers(io, socket, deps) {
     broadcastInventory(io, code, room);
     socket.emit('goals-updated', { goals: serializeGoals(room, pid) });
     socket.emit('daily-result', { ok: true, message: `+${result.coins} 🪙 (серия ${result.streak} дн.)` });
+    } catch (e) {
+      console.error('[goals] daily-claim:', e);
+      socket.emit('daily-result', { ok: false, message: 'Не удалось забрать награду — попробуйте ещё раз' });
+    }
   });
 
   socket.on('quest-claim', (data) => {

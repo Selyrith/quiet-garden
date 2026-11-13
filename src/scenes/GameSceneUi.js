@@ -10,12 +10,15 @@ import { updatePlayerList } from '../ui/PlayerList.js';
 import { DS, drawRoundedRect, drawShadowedRect, createButtonStyle } from '../ui/DesignSystem.js';
 import { TOOLS } from './GameSceneActions.js';
 import { rowCenters } from '../ui/Layout.js';
+import { ICON } from '../ui/Icons.js';
 
+// iconKey — нарисованная иконка (Icons.js), icon — запасной эмодзи,
+// если текстуры почему-то нет (например, сцена не успела их запечь).
 const TOOL_CONFIG = {
-  plant:   { icon: '🌱', label: 'Посадка', color: DS.colors.tools.plant },
-  water:   { icon: '💧', label: 'Полив',   color: DS.colors.tools.water },
-  harvest: { icon: '✂️', label: 'Сбор',    color: DS.colors.tools.harvest },
-  hand:    { icon: '🤲', label: 'Действие', color: DS.colors.tools.hand },
+  plant:   { iconKey: ICON.seed,    icon: '🌱', label: 'Посадка',  color: DS.colors.tools.plant },
+  water:   { iconKey: ICON.water,   icon: '💧', label: 'Полив',    color: DS.colors.tools.water },
+  harvest: { iconKey: ICON.harvest, icon: '✂️', label: 'Сбор',     color: DS.colors.tools.harvest },
+  hand:    { iconKey: ICON.hand,    icon: '🤲', label: 'Действие', color: DS.colors.tools.hand },
 };
 
 export const GameSceneUi = {
@@ -45,35 +48,51 @@ export const GameSceneUi = {
         let fillColor, borderColor, borderWidth;
         const isActive = this.selectedTool === id;
         
+        // Тёмная обводка у КАЖДОЙ кнопки — приём референсов: предмет в мире
+        // всегда имеет контур. Сверху она светлая (свет падает сверху).
         if (state === 'pressed') {
           fillColor = cfg.color.bg;
-          borderColor = cfg.color.icon;
+          borderColor = DS.colors.text.primary;
           borderWidth = 3;
         } else if (state === 'hover' || isActive) {
           fillColor = cfg.color.bg;
-          borderColor = cfg.color.icon;
-          borderWidth = isActive ? 3 : 2;
+          borderColor = DS.colors.text.primary;
+          borderWidth = isActive ? 3 : 2.5;
         } else {
-          fillColor = DS.colors.bg.tertiary;
-          borderColor = DS.colors.ui.border;
-          borderWidth = 1.5;
+          fillColor = 0xF7EFE1;
+          borderColor = DS.colors.text.primary;
+          borderWidth = 2.5;
         }
         
         drawRoundedRect(bg, -btnSize/2, -btnSize/2, btnSize, btnSize, DS.radius.md, fillColor, 1, borderColor, borderWidth);
-        
-        // Блик
+
+        // Объём: тень снизу + светлый блик сверху. Плоские плашки читались
+        // как веб-кнопки, а не как пояс инструментов в игре.
+        bg.fillStyle(0x3D2E20, state === 'pressed' ? 0.10 : 0.20);
+        bg.fillRoundedRect(-btnSize/2 + 2, btnSize/2 - 5, btnSize - 4, 5, 3);
+
         if (state !== 'pressed') {
-          bg.fillStyle(0xffffff, 0.1);
-          bg.fillRoundedRect(-btnSize/2 + 4, -btnSize/2 + 4, btnSize - 8, btnSize/2 - 2, DS.radius.md - 2);
+          bg.fillStyle(0xFFFFFF, isActive ? 0.30 : 0.16);
+          bg.fillRoundedRect(-btnSize/2 + 4, -btnSize/2 + 4, btnSize - 8, btnSize / 2 - 2, DS.radius.md - 2);
+        } else {
+          bg.fillStyle(0x2C1B10, 0.14);
+          bg.fillRoundedRect(-btnSize/2 + 3, -btnSize/2 + 3, btnSize - 6, btnSize - 6, DS.radius.md - 1);
+        }
+
+        // Активный инструмент: золотое кольцо — сразу видно, чем работаешь.
+        if (isActive) {
+          bg.lineStyle(2.5, DS.hexToPhaser(DS.colors.brand.secondary), 0.95);
+          bg.strokeRoundedRect(-btnSize/2 - 2.5, -btnSize/2 - 2.5, btnSize + 5, btnSize + 5, DS.radius.md + 2);
         }
       };
       drawBtn('idle');
       container.add(bg);
 
-      // Иконка
-      const icon = this.add.text(0, -4, cfg.icon, {
-        fontSize: `${btnSize * 0.45}px`,
-      }).setOrigin(0.5);
+      // Иконка: нарисованная (Icons.js) вместо эмодзи. Размер подобран так,
+      // чтобы визуально совпадать с прежним эмодзи — раскладка не меняется.
+      const icon = (cfg.iconKey && this.textures.exists(cfg.iconKey))
+        ? this.add.image(0, -4, cfg.iconKey).setDisplaySize(Math.round(btnSize * 0.5), Math.round(btnSize * 0.5))
+        : this.add.text(0, -4, cfg.icon, { fontSize: `${btnSize * 0.45}px` }).setOrigin(0.5);
       container.add(icon);
 
       // Подпись
@@ -111,7 +130,7 @@ export const GameSceneUi = {
       hit.on('pointerup', () => drawBtn('hover'));
       hit.on('pointerupoutside', () => drawBtn('idle'));
 
-      this.toolButtons.set(id, { container, bg, icon, label, hit, cfg, drawBtn });
+      this.toolButtons.set(id, { container, bg, icon, label, hit, cfg, drawBtn, baseY: y });
     });
 
     // Показываем все инструменты сразу
@@ -126,7 +145,7 @@ export const GameSceneUi = {
     this.selectedTool = toolId;
 
     // Показываем ВСЕ инструменты (не только активный), подсвечиваем активный
-    this.toolButtons.forEach(({ container, bg, icon, label, cfg, drawBtn }, id) => {
+    this.toolButtons.forEach(({ container, bg, icon, label, cfg, drawBtn, baseY }, id) => {
       const isActive = id === toolId;
       
       container.setVisible(true); // все 4 кнопки всегда видны
@@ -135,6 +154,10 @@ export const GameSceneUi = {
       bg.setScale(1);
       drawBtn(isActive ? 'hover' : 'idle'); // active показываем как hover
       
+      // Активный инструмент приподнимается на 5 px (и вместе с ним иконка
+      // и хит-зона), чтобы выбор читался не только цветом.
+      container.y = baseY + (isActive ? -5 : 0);
+
       if (label) {
         label.setColor(isActive ? cfg.color.label : DS.colors.text.muted);
         label.setFontStyle(isActive ? 'bold' : 'normal');

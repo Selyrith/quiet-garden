@@ -1,22 +1,41 @@
 import Phaser from 'phaser';
 import { getPlant } from '../../shared/plants.js';
-import { drawPixelPlant } from './PixelArt.js';
+import { drawPixelPlant, drawOutlinedPlant } from './PixelArt.js';
 import { MutationsOverlay } from './MutationsOverlay.js';
-import { UNIFIED, createUnifiedButton } from './ui-unified.js';
 import { DS } from './DesignSystem.js';
-import { MOBILE } from './MobileScale.js';
-import { UI, drawPanel } from './ui-theme.js';
+import {
+  openOverlay,
+  createButton,
+  createPill,
+  createScrollArea,
+  sectionHeader,
+  color,
+} from './ui-kit.js';
 
+/**
+ * Карточка растения — «страница гербария».
+ *
+ * Было: панель с крестиком, у которого подпись стояла на 12px ниже центра
+ * тач-зоны, и кнопкой из трёх отдельных объектов разной глубины. Описание,
+ * среда обитания и легенда шли сплошным текстом без иерархии.
+ *
+ * Стало: скелет кита, «гербарный лист» с образцом растения, печатью
+ * редкости, сроками и ценой в двух чипах, и три аккуратные секции текста.
+ */
 export class PlantDetailOverlay extends Phaser.GameObjects.Container {
   constructor(scene, seed, collection) {
-    const cam = scene.cameras.main;
     super(scene, 0, 0);
     scene.add.existing(this);
     this.setDepth(DS.overlay.detail);
     this.scene = scene;
+    this.seed = seed;
+    this.collection = collection;
+    this._destroyed = false;
 
     const plant = getPlant(seed);
     const unlocked = collection.has(seed);
+    this.plant = plant;
+    this.unlocked = unlocked;
 
     let mutCount = 0;
     if (unlocked) {
@@ -24,169 +43,217 @@ export class PlantDetailOverlay extends Phaser.GameObjects.Container {
         if (typeof id === 'string' && id.startsWith(`mut_${seed}_`)) mutCount++;
       }
     }
+    this.mutCount = mutCount;
 
-    scene.hideSignpost?.();
-    if (scene.signpostDom) { scene.signpostDom.destroy(); scene.signpostDom = null; }
+    this.ui = openOverlay(scene, {
+      title: unlocked ? plant.name : 'Неизвестное растение',
+      subtitle: unlocked ? plant.rarity.name : 'Ещё не открыто',
+      depth: DS.overlay.detail,
+      maxW: 420,
+      maxH: 640,
+      padding: 20,
+      container: this,
+      onClose: () => this.destroy(),
+    });
 
-    this.bg = scene.add.rectangle(0, 0, cam.width, cam.height, 0x231912, 0.64)
-      .setOrigin(0).setInteractive();
-    this.add(this.bg);
+    this.render();
+  }
 
-    const panelW = Math.min(cam.width - 16, 360);
-    const panelH = Math.min(cam.height - 24, 580);
-    const panelX = cam.width / 2;
-    const panelY = cam.height / 2;
-    this.panel = scene.add.graphics();
-    drawPanel(this.panel, panelX - panelW / 2, panelY - panelH / 2, panelW, panelH, MOBILE.radiusPanel, true);
-    this.panel.setInteractive(new Phaser.Geom.Rectangle(panelX - panelW / 2, panelY - panelH / 2, panelW, panelH), Phaser.Geom.Rectangle.Contains);
-    this.add(this.panel);
+  render() {
+    const scene = this.scene;
+    const C = this.ui.content;
+    const plant = this.plant;
+    const unlocked = this.unlocked;
 
-    const closeHit = scene.add.rectangle(panelX + panelW / 2 - 24, panelY - panelH / 2 + 24, UNIFIED.minTouch, UNIFIED.minTouch, UNIFIED.color)
-      .setInteractive({ useHandCursor: true });
-    closeHit.setStrokeStyle(2, UNIFIED.colorHi);
-    const closeBtn = scene.add.text(panelX + panelW / 2 - 24, panelY - panelH / 2 + 12, '✕',
-      { fontSize: `${DS.font.size.lg}px`, color: UI.css.textDark, fontStyle: 'bold' }
-    ).setOrigin(0.5, 0);
-    closeHit.on('pointerdown', () => this.destroy());
-    this.add([closeHit, closeBtn]);
+    this.ui.body.removeAll(true);
 
-    const compact = cam.height < 700;
-    const fs = compact ? 12 : 13;
-    const titleFs = compact ? 16 : 18;
-    const smallFs = compact ? 10 : 11;
-    const spriteSize = compact ? 70 : 100;
+    // --- Образец: круглая «лупа» гербария с растением ---
+    const sampleH = 132;
+    const sampleY = C.top + 4;
+    const sampleCard = scene.add.graphics();
+    sampleCard.fillStyle(color(DS.colors.bg.secondary), 1);
+    sampleCard.fillRoundedRect(C.left, sampleY, C.width, sampleH, DS.radius.lg);
+    sampleCard.lineStyle(1.5, color(DS.colors.ui.border), 1);
+    sampleCard.strokeRoundedRect(C.left, sampleY, C.width, sampleH, DS.radius.lg);
+    this.ui.body.add(sampleCard);
 
-    let y = panelY - panelH / 2 + 50;
+    const discX = C.left + 74;
+    const discY = sampleY + sampleH / 2;
+    const discR = 46;
+    const disc = scene.add.circle(discX, discY, discR, color(DS.colors.bg.elevated), 1)
+      .setStrokeStyle(2, unlocked ? plant.rarity.color : color(DS.colors.ui.border), 1);
+    this.ui.body.add(disc);
 
     if (unlocked) {
-      const g = scene.add.graphics();
-      g.setPosition(panelX, y + spriteSize * 0.5);
-      drawPixelPlant(g, plant, spriteSize / 100, 0, null);
-      this.add(g);
+      const art = scene.add.graphics();
+      art.setPosition(discX, discY + discR - 6);
+      drawOutlinedPlant(art, plant, discR * 1.9 / 100, null);
+      this.ui.body.add(art);
     } else {
-      const q = scene.add.text(panelX, y + spriteSize / 2, '?', {
-        fontSize: `${spriteSize * 0.6}px`, color: UI.css.textMuted, fontStyle: 'bold'
+      const q = scene.add.text(discX, discY, '?', {
+        fontSize: '42px',
+        fontFamily: DS.font.family.title,
+        color: DS.colors.text.muted,
       }).setOrigin(0.5);
-      this.add(q);
+      this.ui.body.add(q);
     }
-    y += spriteSize + 6;
 
-    const nameText = unlocked ? plant.name : '???';
-    const nameColor = unlocked ? UI.textDark : UI.textMuted;
-    this.add(scene.add.text(panelX, y, nameText, {
-      fontSize: `${titleFs}px`, color: nameColor, fontStyle: 'bold'
-    }).setOrigin(0.5, 0));
-    y += titleFs + 6;
+    // Справа от лупы — редкость, время роста, цена.
+    const infoX = discX + discR + 18;
+    let iy = sampleY + 18;
 
     if (unlocked) {
-      const rarColor = '#' + plant.rarity.color.toString(16).padStart(6, '0');
-      this.add(scene.add.text(panelX, y, plant.rarity.name, {
-        fontSize: `${fs}px`, color: rarColor, fontStyle: 'bold'
-      }).setOrigin(0.5, 0));
-      y += fs + 8;
+      const rarity = plant.rarity;
+      const rarityPill = scene.add.text(infoX, iy, rarity.name.toUpperCase(), {
+        fontSize: `${DS.font.size.xs}px`,
+        fontFamily: DS.font.family.base,
+        fontStyle: 'bold',
+        color: `#${rarity.color.toString(16).padStart(6, '0')}`,
+      }).setOrigin(0, 0);
+      this.ui.body.add(rarityPill);
+      iy += 20;
 
-      const stats = `⏱ ${plant.growSeconds}s   ·   💰 ${plant.price}`;
-      this.add(scene.add.text(panelX, y, stats, {
-        fontSize: `${smallFs}px`, color: UI.css.textMuted
-      }).setOrigin(0.5, 0));
-      y += smallFs + 10;
+      const nameText = scene.add.text(infoX, iy, plant.name, {
+        fontSize: `${DS.font.size.md}px`,
+        fontFamily: DS.font.family.base,
+        fontStyle: 'bold',
+        color: DS.colors.text.primary,
+        wordWrap: { width: C.right - infoX - 8 },
+      }).setOrigin(0, 0);
+      this.ui.body.add(nameText);
+      iy += nameText.height + 8;
+    } else {
+      const hint = scene.add.text(infoX, iy, 'Посадите семя и соберите урожай — карточка заполнится сама.', {
+        fontSize: `${DS.font.size.sm}px`,
+        fontFamily: DS.font.family.base,
+        color: DS.colors.text.secondary,
+        wordWrap: { width: C.right - infoX - 8 },
+      }).setOrigin(0, 0);
+      this.ui.body.add(hint);
+      iy += hint.height + 8;
     }
 
-    this.add(scene.add.rectangle(panelX, y, panelW - 40, 1, UI.woodLight).setOrigin(0.5));
-    y += 10;
+    if (unlocked) {
+      // Два чипа: время роста и цена.
+      const chipY = iy + 8;
+      const timePill = createPill(scene, infoX + 42, chipY, 84, 26, `⏱ ${plant.growSeconds}с`, {
+        fill: DS.colors.bg.elevated,
+        border: DS.colors.ui.border,
+        color: DS.colors.text.secondary,
+        fontSize: DS.font.size.xs,
+      });
+      this.ui.body.add(timePill);
 
-    if (!unlocked) {
-      this.add(scene.add.text(panelX, y + 15, 'Это растение ещё не открыто.', {
-        fontSize: `${fs}px`, color: UI.css.textMuted, fontStyle: 'italic'
-      }).setOrigin(0.5, 0));
-      this.add(scene.add.text(panelX, y + 55,
-        'Посадите его семя и соберите урожай,\nчтобы добавить его в книгу.', {
-          fontSize: `${smallFs}px`, color: UI.css.textMuted, align: 'center', lineSpacing: 4
-        }).setOrigin(0.5, 0));
-
-      const btnY = panelY + panelH / 2 - 44;
-      // Кнопка и её тач-таргет — ОДИН объект с явной глубиной.
-      // Раньше невидимый прямоугольник лежал под кнопкой и перехватывал клик
-      // (Phaser отдаёт его только верхнему объекту), а у самой кнопки не было
-      // общей глубины с остальным содержимым панели.
-      const btnHit = scene.add.rectangle(panelX, btnY, panelW - 56, MOBILE.buttonH, 0x000000, 0.001)
-        .setInteractive({ useHandCursor: true })
-        .setDepth(DS.overlay.detail + 2);
-      this.add(btnHit);
-      const btn = scene.add.rectangle(panelX, btnY, panelW - 56, MOBILE.buttonH, UNIFIED.color, 1)
-        .setStrokeStyle(1.5, UNIFIED.colorLo, 0.7)
-        .setDepth(DS.overlay.detail + 3);
-      this.add(btn);
-      this.add(scene.add.text(panelX, btnY, 'Понятно', {
-        fontSize: `${MOBILE.font.label}px`, color: '#fcf8f0', fontStyle: 'bold'
-      }).setOrigin(0.5).setDepth(DS.overlay.detail + 4));
-      btnHit.on('pointerdown', () => this.destroy());
-      return;
+      const pricePill = createPill(scene, infoX + 42 + 92, chipY, 84, 26, `🪙 ${plant.price}`, {
+        fill: DS.colors.bg.elevated,
+        border: DS.colors.ui.border,
+        color: DS.colors.text.secondary,
+        fontSize: DS.font.size.xs,
+      });
+      this.ui.body.add(pricePill);
     }
+
+    // --- Текст: описание / среда / легенда ---
+    let y = sampleY + sampleH + 14;
+    const bottomReserve = (this.mutCount > 0 || !unlocked) ? 70 : 16;
+    const scroll = createScrollArea(scene, this.ui.body, {
+      left: C.left,
+      right: C.right,
+      top: y,
+      bottom: C.bottom - bottomReserve,
+      width: C.width,
+    });
+    this.scroll = scroll;
 
     const lore = plant.lore || {};
-    const contentLeft = panelX - panelW / 2 + 20;
-    const wrapW = panelW - 40;
-    const lineSpacing = 3;
+    let ly = 0;
 
-    this.add(scene.add.text(contentLeft, y, '📖 Описание', {
-      fontSize: `${fs}px`, color: UI.css.woodHi, fontStyle: 'bold'
-    }));
-    y += fs + 4;
-    const desc = scene.add.text(contentLeft, y, lore.description || '', {
-      fontSize: `${smallFs}px`, color: UI.css.textDark, wordWrap: { width: wrapW }, lineSpacing
-    });
-    this.add(desc);
-    y += desc.height + 10;
+    const addSection = (icon, title, body) => {
+      if (!body) return;
+      ly += sectionHeader(scene, scroll.view, 0, ly, C.width, `${title}`);
+      const t = scene.add.text(0, ly, body, {
+        fontSize: `${DS.font.size.sm}px`,
+        fontFamily: DS.font.family.base,
+        color: DS.colors.text.secondary,
+        wordWrap: { width: C.width },
+        lineSpacing: 3,
+      }).setOrigin(0, 0);
+      scroll.view.add(t);
+      ly += t.height + 14;
+    };
 
-    this.add(scene.add.text(contentLeft, y, '🌿 Среда обитания', {
-      fontSize: `${fs}px`, color: UI.css.woodHi, fontStyle: 'bold'
-    }));
-    y += fs + 4;
-    const habit = scene.add.text(contentLeft, y, lore.habitat || '', {
-      fontSize: `${smallFs}px`, color: UI.css.textSecondary, wordWrap: { width: wrapW }, lineSpacing
-    });
-    this.add(habit);
-    y += habit.height + 10;
+    if (unlocked) {
+      addSection('📖', 'Описание', lore.description);
+      addSection('🌿', 'Среда обитания', lore.habitat);
+      addSection('🌙', 'Легенда', lore.legend);
+      if (!lore.description && !lore.habitat && !lore.legend) {
+        const empty = scene.add.text(0, 0, 'У этого вида ещё нет записей в книге мифов.', {
+          fontSize: `${DS.font.size.sm}px`,
+          fontFamily: DS.font.family.base,
+          color: DS.colors.text.muted,
+          fontStyle: 'italic',
+          wordWrap: { width: C.width },
+        }).setOrigin(0, 0);
+        scroll.view.add(empty);
+        ly += empty.height + 14;
+      }
+      if (lore.rarityNote) {
+        const note = scene.add.text(0, ly, lore.rarityNote, {
+          fontSize: `${DS.font.size.xs}px`,
+          fontFamily: DS.font.family.base,
+          color: DS.colors.text.muted,
+          fontStyle: 'italic',
+          wordWrap: { width: C.width },
+        }).setOrigin(0, 0);
+        scroll.view.add(note);
+        ly += note.height + 8;
+      }
+    } else {
+      const how = scene.add.text(0, 0,
+        'Каждое новое растение попадает в книгу, когда вы вырастите его впервые. Пока вид не открыт, в записи видна только тень.', {
+          fontSize: `${DS.font.size.sm}px`,
+          fontFamily: DS.font.family.base,
+          color: DS.colors.text.secondary,
+          wordWrap: { width: C.width },
+          lineSpacing: 3,
+        }).setOrigin(0, 0);
+      scroll.view.add(how);
+      ly += how.height + 10;
+    }
 
-    this.add(scene.add.text(contentLeft, y, '🌙 Легенда', {
-      fontSize: `${fs}px`, color: UI.css.woodHi, fontStyle: 'bold'
-    }));
-    y += fs + 4;
-    const legend = scene.add.text(contentLeft, y, lore.legend || '', {
-      fontSize: `${smallFs}px`, color: UI.css.textSecondary, wordWrap: { width: wrapW }, lineSpacing
-    });
-    this.add(legend);
-    y += legend.height + 10;
+    scroll.refresh();
 
-    if (mutCount > 0) {
-      const btnY = panelY + panelH / 2 - 44;
-      const openMutations = () => {
-        this.destroy();
-        new MutationsOverlay(scene, seed, collection);
-      };
-      const btnHit = scene.add.rectangle(panelX, btnY, panelW - 56, MOBILE.buttonH, 0x000000, 0.001)
-        .setInteractive({ useHandCursor: true })
-        .setDepth(DS.overlay.detail + 2);
-      this.add(btnHit);
-      const btn = scene.add.rectangle(panelX, btnY, panelW - 56, MOBILE.buttonH, UNIFIED.primary, 1)
-        .setStrokeStyle(1.5, 0xfcf8f0, 0.5)
-        .setDepth(DS.overlay.detail + 3);
-      this.add(btn);
-      this.add(scene.add.text(panelX, btnY, `✨ Мутации: ${mutCount}`, {
-        fontSize: `${MOBILE.font.label}px`, color: '#fcf8f0', fontStyle: 'bold'
-      }).setOrigin(0.5).setDepth(DS.overlay.detail + 4));
-      btnHit.on('pointerdown', openMutations);
-    } else if (y < panelY + panelH / 2 - 30) {
-      this.add(scene.add.text(panelX, y, lore.rarityNote || '', {
-        fontSize: `${smallFs - 1}px`, color: UI.css.textMuted, fontStyle: 'italic',
-        align: 'center', wordWrap: { width: wrapW }
-      }).setOrigin(0.5, 0));
+    // --- Нижнее действие ---
+    const buttonW = C.width;
+    const buttonH = 48;
+    const buttonY = C.bottom - 6 - buttonH / 2;
+
+    if (!unlocked) {
+      const got = createButton(scene, C.left + C.width / 2, buttonY, buttonW, buttonH, 'Понятно', () => this.destroy(), {
+        variant: 'primary',
+        fontSize: DS.font.size.base,
+      });
+      this.ui.body.add(got);
+    } else if (this.mutCount > 0) {
+      const openMutations = createButton(scene, C.left + C.width / 2, buttonY, buttonW, buttonH,
+        `✨ Мутации: ${this.mutCount}`, () => {
+          this.destroy();
+          new MutationsOverlay(this.scene, this.seed, this.collection);
+        }, {
+          variant: 'primary',
+          fontSize: DS.font.size.base,
+        });
+      this.ui.body.add(openMutations);
     }
   }
 
   destroy(fromScene) {
-    this.scene.showSignpost?.();
-    super.destroy(fromScene);
+    if (this._destroyed) return;
+    this._destroyed = true;
+    this.scroll && this.scroll.destroy?.();
+    const ui = this.ui;
+    this.ui = null;
+    if (ui) ui.close();
+    try { super.destroy(fromScene); } catch {}
   }
 }

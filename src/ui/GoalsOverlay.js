@@ -1,10 +1,30 @@
 import Phaser from 'phaser';
-import { UI, drawPanel } from './ui-theme.js';
-import { TREE_NODES, STREAK_MULTIPLIERS } from '../../shared/goals.js';
-import { createUnifiedButton, createUnifiedBadge } from './ui-unified.js';
-import { UNIFIED } from './ui-unified.js';
 import { DS } from './DesignSystem.js';
-import { MOBILE } from './MobileScale.js';
+import {
+  openOverlay,
+  createCard,
+  createButton,
+  createScrollArea,
+  createScrollButtons,
+  createProgressBar,
+  sectionHeader,
+  createEmptyState,
+  color,
+} from './ui-kit.js';
+import { TREE_NODES, STREAK_MULTIPLIERS, getTreeNodeProgress } from '../../shared/goals.js';
+
+/**
+ * Цели: ежедневная награда, серия, квесты дня и дерево прогресса.
+ *
+ * Было: панель 360×540 без прокрутки, поэтому дерево прогресса уходило под
+ * нижний край и до него нельзя было добраться. Прогресс дерева считался по
+ * `totals[node.check]` (harvestTotal), а сервер отдаёт короткие имена
+ * (harvest) — все узлы показывали «0 / N» даже после реальных сборов.
+ * Заголовки секций рисовались числовым токеном в `color:` и были невидимы.
+ *
+ * Стало: один скелет, прокрутка со стрелками, прогресс через общий
+ * getTreeNodeProgress(), заметные статусы «можно забрать».
+ */
 
 export class GoalsOverlay extends Phaser.GameObjects.Container {
   constructor(scene, goals) {
@@ -14,259 +34,315 @@ export class GoalsOverlay extends Phaser.GameObjects.Container {
     this.scene = scene;
     this.goals = goals;
     this.isClaiming = false;
+    this._destroyed = false;
 
-    scene.hideSignpost?.();
-    if (scene.signpostDom) { scene.signpostDom.destroy(); scene.signpostDom = null; }
-
-    const cam = scene.cameras.main;
-    this.bg = scene.add.rectangle(0, 0, cam.width, cam.height, 0x000000, 0.8)
-      .setOrigin(0).setInteractive();
-    this.add(this.bg);
-
-    const panelW = Math.min(360, cam.width - 20);
-    const panelH = Math.min(540, cam.height - 20);
-    this.panel = scene.add.graphics();
-    drawPanel(this.panel, cam.width / 2 - panelW / 2, cam.height / 2 - panelH / 2, panelW, panelH, 16, true);
-    this.add(this.panel);
-
-    this.title = scene.add.text(
-      cam.width / 2, cam.height / 2 - panelH / 2 + 12, 'Цели',
-      { fontSize: '18px', color: UI.css.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle }
-    ).setOrigin(0.5, 0);
-    this.add(this.title);
-
-    this.closeHit = scene.add.rectangle(cam.width / 2 + panelW / 2 - 24, cam.height / 2 - panelH / 2 + 24, 44, 44, UNIFIED.color).setInteractive({ useHandCursor: true });
-    this.closeHit.setStrokeStyle(2, UNIFIED.colorHi);
-    this.closeBtn = scene.add.text(cam.width / 2 + panelW / 2 - 24, cam.height / 2 - panelH / 2 + 24, '✕', {
-      fontSize: '22px', color: '#3e2723', fontStyle: 'bold'
-    }).setOrigin(0.5, 0);
-    this.closeHit.on('pointerdown', () => this.destroy());
-    this.add([this.closeHit, this.closeBtn]);
-
-    this.content = scene.add.container(0, 0);
-    this.add(this.content);
+    this.ui = openOverlay(scene, {
+      title: '🎯 Цели',
+      subtitle: 'Тихий ритуал на каждый день',
+      depth: DS.overlay.goals,
+      maxW: 440,
+      maxH: 660,
+      padding: 20,
+      container: this,
+      onClose: () => this.destroy(),
+    });
 
     this.render();
   }
 
   render() {
-    this.content.removeAll(true);
-    const cam = this.scene.cameras.main;
-    const panelW = Math.min(360, cam.width - 20);
-    const panelH = Math.min(540, cam.height - 20);
-    const startY = cam.height / 2 - panelH / 2 + 44;
-    const startX = cam.width / 2 - panelW / 2 + 16;
-    const w = panelW - 32;
+    const C = this.ui.content;
+    this.ui.body.removeAll(true);
+    this.scroll && this.scroll.destroy?.();
+    this.arrows && this.arrows.destroy?.();
 
-    let y = startY;
+    const scroll = createScrollArea(this.scene, this.ui.body, {
+      left: C.left,
+      right: C.right,
+      top: C.top,
+      bottom: C.bottom - 26,
+      width: C.width,
+    });
+    this.scroll = scroll;
 
-    // --- Daily reward ---
-    y = this.sectionTitle(startX, y, '🎁 Ежедневная награда');
-    const daily = this.goals.daily || { claimed: true };
-    const streak = this.goals.streak || { count: 0, multiplier: 1, dailyActions: 0, season: { name: 'Сезон', color: '#fff' } };
+    let y = 0;
+    y = this.buildDaily(scroll.view, y, C.width);
+    y += 16;
+    y = this.buildQuests(scroll.view, y, C.width);
+    y += 16;
+    y = this.buildTree(scroll.view, y, C.width);
 
-    this.content.add(this.scene.add.text(startX + w, y - 20, streak.season.name, { fontSize: '11px', color: '#e8c55a', fontStyle: 'italic' }).setOrigin(1, 0.5));
+    scroll.refresh();
 
-    // 7-day calendar — unified badge circles
-    const calY = y + 20;
-    const circleR = 12;
-    const gap = 6;
+    this.arrows = createScrollButtons(this.scene, this.ui.body, scroll, {
+      x: C.left + C.width / 2,
+      y: C.bottom - 2,
+    });
+  }
+
+  // --- Ежедневная награда + серия -----------------------------------------
+
+  buildDaily(parent, y, w) {
+    const scene = this.scene;
+    const daily = this.goals?.daily || { claimed: true };
+    const streak = this.goals?.streak || {
+      count: 0, multiplier: 1, dailyActions: 0,
+      season: { name: 'Сезон', icon: '🌿' },
+    };
+
+    const cardH = 168;
+    const card = createCard(scene, 0, y, w, cardH, {
+      radius: DS.radius.lg,
+      fill: DS.colors.bg.elevated,
+      accent: daily.claimed ? DS.colors.ui.border : DS.colors.brand.secondary,
+    });
+    parent.add(card);
+
+    // Сезон — маленькая подпись справа.
+    const season = streak.season || {};
+    const seasonText = scene.add.text(w - 14, 14, `${season.icon || '🌿'} ${season.name || ''}`, {
+      fontSize: `${DS.font.size.xs}px`,
+      fontFamily: DS.font.family.base,
+      fontStyle: 'bold',
+      color: DS.colors.text.accent,
+    }).setOrigin(1, 0);
+    card.body.add(seasonText);
+
+    const headerText = scene.add.text(16, 14, '🎁 Награда дня', {
+      fontSize: `${DS.font.size.md}px`,
+      fontFamily: DS.font.family.base,
+      fontStyle: 'bold',
+      color: DS.colors.text.primary,
+    }).setOrigin(0, 0);
+    card.body.add(headerText);
+
+    // Семь дней серии — «нотки» с множителем.
+    const circleR = 13;
+    const gap = 7;
     const totalW = 7 * (circleR * 2) + 6 * gap;
-    const startCalX = startX + w / 2 - totalW / 2 + circleR;
-    const activeIdx = Math.max(0, (streak.count - 1) % 7);
+    const startCalX = w / 2 - totalW / 2 + circleR;
+    const activeIdx = Math.max(0, ((streak.count || 0) - 1) % 7);
+    const calY = 50;
 
     for (let i = 0; i < 7; i++) {
       const cx = startCalX + i * (circleR * 2 + gap);
-      const isClaimed = (i < activeIdx) || (i === activeIdx && daily.claimed);
+      const isClaimed = i < activeIdx || (i === activeIdx && daily.claimed);
       const isToday = i === activeIdx && !daily.claimed;
 
-      const isActive = isToday && streak.dailyActions > 0;
+      const fill = isClaimed
+        ? DS.colors.brand.primary
+        : isToday
+          ? DS.colors.brand.secondary
+          : DS.colors.bg.tertiary;
+      const ring = isToday ? color(DS.colors.brand.secondary) : color(DS.colors.ui.border);
 
-      const circle = createUnifiedBadge(this.scene, cx, calY, '', {
-        radius: circleR,
-        disabled: isClaimed,
-      });
-      // claimed → muted unified color, today → unified color hi, inactive → secondary
-      if (isClaimed) {
-        circle.setDisabled(true);
-      } else if (isActive) {
-        // highlight today: use unified colorHi via fill override
-        const bg = circle.getAt(0);
-        bg.setFillStyle(UNIFIED.colorHi, 1);
-      }
-      this.content.add(circle);
+      const circle = scene.add.circle(cx, calY, circleR, color(fill), 1)
+        .setStrokeStyle(isToday ? 2.5 : 1.5, ring, 1);
+      card.body.add(circle);
 
-      const dayMult = STREAK_MULTIPLIERS[i];
-      const multColor = isClaimed ? '#5c4a3a' : isActive ? '#ffffff' : '#aaaaaa';
-      this.content.add(this.scene.add.text(cx, calY, `x${dayMult}`, { fontSize: '10px', color: multColor, fontStyle: 'bold' }).setOrigin(0.5));
+      const mult = STREAK_MULTIPLIERS[i];
+      const multText = scene.add.text(cx, calY - 1, `×${mult}`, {
+        fontSize: `${DS.font.size.xs - 2}px`,
+        fontFamily: DS.font.family.base,
+        fontStyle: 'bold',
+        color: isClaimed ? DS.colors.text.inverse : isToday ? DS.colors.text.primary : DS.colors.text.muted,
+      }).setOrigin(0.5);
+      card.body.add(multText);
 
-      if (isActive && streak.dailyActions > 0) {
-        this.scene.tweens.add({ targets: circle, scale: 1.15, duration: 500, yoyo: true, repeat: -1 });
+      if (isToday && (streak.dailyActions || 0) > 0) {
+        scene.tweens.add({ targets: circle, scale: 1.12, duration: 700, yoyo: true, repeat: -1 });
       }
     }
 
-    y += 44;
-
-    // Claim button — unified color
-    const canClaim = !daily.claimed && streak.dailyActions > 0;
-    let statusText = 'Получено сегодня';
-    let btnDisabled = true;
-
+    // Кнопка-действие.
+    const canClaim = !daily.claimed && (streak.dailyActions || 0) > 0;
+    let label = 'Получено сегодня';
     if (!daily.claimed) {
-      if (streak.dailyActions > 0) {
-        statusText = `Забрать +${Math.floor(50 * streak.multiplier)} 🪙`;
-        btnDisabled = false;
-      } else {
-        statusText = 'Сначала полейте грядку';
-        btnDisabled = true;
-      }
+      label = (streak.dailyActions || 0) > 0
+        ? `Забрать +${Math.floor(50 * (streak.multiplier || 1))} 🪙`
+        : 'Сначала полейте грядку';
     }
 
-    const btnY = y + 10;
-    const btnW = w;
-    const btnH = 34;
+    const buttonW = w - 32;
+    const buttonH = 46;
+    const button = createButton(scene, w / 2, 96 + buttonH / 2, buttonW, buttonH, label, () => {
+      if (this.isClaiming) return;
+      this.isClaiming = true;
+      this.scene.socket?.emit('daily-claim');
+    }, {
+      variant: canClaim ? 'primary' : 'ghost',
+      disabled: !canClaim,
+      fontSize: DS.font.size.base,
+    });
+    card.body.add(button);
 
-    const dailyHit = this.scene.add.rectangle(startX + w / 2, btnY + btnH / 2, Math.max(btnW, 44), Math.max(btnH, 44), 0x000000, 0.001);
-    dailyHit.setInteractive({ useHandCursor: !btnDisabled });
-    this.content.add(dailyHit);
+    // Сколько дней серии — поясняющая строка под кнопкой.
+    const streakLine = (streak.count || 0) > 0
+      ? `Серия: ${streak.count} дн. · множитель ×${streak.multiplier || 1}`
+      : 'Загляните завтра, чтобы начать серию';
+    const sub = scene.add.text(w / 2, 154, streakLine, {
+      fontSize: `${DS.font.size.xs}px`,
+      fontFamily: DS.font.family.base,
+      color: DS.colors.text.muted,
+    }).setOrigin(0.5, 0);
+    card.body.add(sub);
 
-    if (!btnDisabled) {
-      dailyHit.on('pointerdown', () => {
-        if (this.isClaiming) return;
-        this.isClaiming = true;
-        this.scene.socket?.emit('daily-claim');
+    return y + cardH;
+  }
+
+  // --- Квесты дня ---------------------------------------------------------
+
+  buildQuests(parent, y, w) {
+    const scene = this.scene;
+    const quests = this.goals?.quests || [];
+
+    const headerH = sectionHeader(scene, parent, 0, y, w, 'Квесты дня');
+    y += headerH;
+
+    if (!quests.length) {
+      const empty = createEmptyState(scene, w / 2, y + 40, w - 40, {
+        icon: '🌙',
+        title: 'Квесты ещё в пути',
+        hint: 'Они появятся, как только сервер пришлёт новый день.',
       });
+      parent.add(empty);
+      return y + 100;
     }
 
-    const dailyBtnBg = this.scene.add.graphics();
-    const fillColor = btnDisabled ? UNIFIED.color : UNIFIED.color;
-    const fillAlpha = btnDisabled ? UNIFIED.colorDisabledAlpha : 1;
-    dailyBtnBg.fillStyle(fillColor, fillAlpha);
-    dailyBtnBg.fillRoundedRect(startX, btnY, btnW, btnH, 8);
-    dailyBtnBg.lineStyle(1, 0xe8c55a, 0.3);
-    dailyBtnBg.strokeRoundedRect(startX, btnY, btnW, btnH, 8);
-    this.content.add(dailyBtnBg);
-    this.content.add(this.scene.add.text(
-      startX + w / 2, btnY + btnH / 2, statusText,
-      { fontSize: '14px', color: btnDisabled ? '#8a7a66' : '#fcf8f0', fontStyle: 'bold', fontFamily: UI.fontBody }
-    ).setOrigin(0.5));
+    const cardH = 26 + quests.length * 46;
+    const card = createCard(scene, 0, y, w, cardH, {
+      radius: DS.radius.lg,
+      fill: DS.colors.bg.elevated,
+    });
+    parent.add(card);
 
-    y += 50;
-
-    // --- Quests ---
-    y = this.sectionTitle(startX, y, '📋 Квесты дня');
-    const quests = this.goals.quests || [];
+    let ry = 14;
     quests.forEach((q) => {
-      const rowY = y + 20;
       const done = (q.progress || 0) >= q.target;
       const canClaim = done && !q.claimed;
 
-      this.content.add(this.scene.add.text(startX, y, q.text, {
-        fontSize: '13px', color: UI.css.textLight, fontFamily: UI.fontBody
-      }));
-      y += 20;
+      const text = scene.add.text(16, ry, q.text, {
+        fontSize: `${DS.font.size.sm}px`,
+        fontFamily: DS.font.family.base,
+        fontStyle: done ? 'bold' : 'normal',
+        color: q.claimed ? DS.colors.text.muted : DS.colors.text.primary,
+        wordWrap: { width: w - 110 },
+      }).setOrigin(0, 0);
+      card.body.add(text);
 
-      const barW = w - 80;
-      const bg = this.scene.add.rectangle(startX, y, barW, 8, 0x3d2e20).setOrigin(0, 0.5);
-      const fill = this.scene.add.rectangle(
-        startX, y, Math.min(barW, barW * ((q.progress || 0) / q.target)), 8,
-        q.claimed ? UNIFIED.secondary : UNIFIED.color
-      ).setOrigin(0, 0.5);
-      this.content.add(bg);
-      this.content.add(fill);
+      // Прогресс — тонкая полоса под текстом.
+      const barW = w - 32 - (canClaim ? 76 : 0);
+      const bar = createProgressBar(scene, 16, ry + 26, barW, 7, {
+        value: Math.min(1, (q.progress || 0) / q.target),
+        fill: q.claimed ? DS.colors.bg.tertiary : done ? DS.colors.brand.secondary : DS.colors.brand.primary,
+      });
+      card.body.add(bar);
 
-      const progText = this.scene.add.text(startX + barW + 8, y,
-        q.claimed ? '✓' : `${q.progress || 0}/${q.target}`,
-        { fontSize: '12px', color: canClaim ? UNIFIED.color : '#8a7a66' });
-      this.content.add(progText);
+      const count = scene.add.text(16 + barW + 8, ry + 20, q.claimed ? '✓ забрано' : `${q.progress || 0}/${q.target}`, {
+        fontSize: `${DS.font.size.xs}px`,
+        fontFamily: DS.font.family.base,
+        color: q.claimed ? DS.colors.text.muted : done ? DS.colors.brand.dark : DS.colors.text.muted,
+      }).setOrigin(0, 0);
+      card.body.add(count);
 
       if (canClaim) {
-        const qBtnX = startX + w - 72;
-        const qBtnY = y - 12;
-        // Тач-таргет 44×44 по нормам (Material 48 — с запасом), и он же
-        // принимает клик. Раньше кликал невидимый прямоугольник ПОД
-        // графикой: Phaser отдаёт клик только верхнему объекту (topOnly),
-        // поэтому кнопка часто «не реагировала».
-        const qHit = this.scene.add.rectangle(qBtnX + 24, qBtnY + 12, 48, 44, 0x000000, 0.001)
-          .setInteractive({ useHandCursor: true })
-          .setDepth(DS.overlay.goals + 2);
-        this.content.add(qHit);
-        const qBtn = this.scene.add.graphics().setDepth(DS.overlay.goals + 3);
-        qBtn.fillStyle(UNIFIED.color, 1);
-        qBtn.fillRoundedRect(qBtnX, qBtnY, 48, 26, 8);
-        qBtn.lineStyle(1.5, UNIFIED.colorLo, 0.8);
-        qBtn.strokeRoundedRect(qBtnX, qBtnY, 48, 26, 8);
-        this.content.add(qBtn);
-        qHit.on('pointerdown', () => this.scene.socket?.emit('quest-claim', { questId: q.id }));
-        this.content.add(this.scene.add.text(
-          qBtnX + 24, qBtnY + 13, `+${q.reward}`,
-          { fontSize: `${MOBILE.font.caption}px`, color: '#fcf8f0', fontStyle: 'bold' }
-        ).setOrigin(0.5).setDepth(DS.overlay.goals + 4));
+        const claimW = 66;
+        const claim = createButton(scene, w - 16 - claimW / 2, ry + 16, claimW, 36,
+          `+${q.reward}`, () => this.scene.socket?.emit('quest-claim', { questId: q.id }), {
+            variant: 'secondary',
+            fontSize: DS.font.size.sm,
+          });
+        card.body.add(claim);
       }
-      y += 30;
+
+      ry += 46;
     });
 
-    if (quests.length === 0) {
-      this.content.add(this.scene.add.text(startX, y, 'Квесты загрузятся…', {
-        fontSize: '12px', color: '#888888'
-      }));
-      y += 24;
-    }
+    return y + cardH;
+  }
 
-    // --- Tree ---
-    y = this.sectionTitle(startX, y + 4, '🌳 Дерево прогресса');
-    const totals = this.goals.totals || {};
+  // --- Дерево прогресса ---------------------------------------------------
+
+  buildTree(parent, y, w) {
+    const scene = this.scene;
+    const totals = this.goals?.totals || {};
+    const claimedList = this.goals?.treeClaimed || [];
+
+    const headerH = sectionHeader(scene, parent, 0, y, w, 'Дерево прогресса');
+    y += headerH;
+
     TREE_NODES.forEach((node) => {
-      const key = node.check;
-      const value = key === 'speciesCount'
-        ? (totals.speciesCount ?? this.scene.collection?.size ?? 0)
-        : (totals[key] ?? 0);
+      const value = getTreeNodeProgress(node, totals);
+      const claimed = claimedList.includes(node.id);
       const done = value >= node.target;
-      const claimed = (this.goals.treeClaimed || []).includes(node.id);
-      const rowY = y + 8;
-      const color = claimed ? '#8a7a66' : done ? 0xe8c55a : '#8a7a66';
-      this.content.add(this.scene.add.text(startX, rowY, node.text, {
-        fontSize: '12px', color
-      }));
-      this.content.add(this.scene.add.text(startX + w - 8, rowY, claimed ? '✓' : `${value}/${node.target}`, {
-        fontSize: '11px', color, align: 'right'
-      }).setOrigin(1, 0));
+      const canClaim = done && !claimed;
 
-      if (done && !claimed) {
-        const treeBtnY = rowY + 22;
-        // Тот же дефект, что и у квеста: невидимый прямоугольник под графикой.
-        const treeHit = this.scene.add.rectangle(startX + w / 2, treeBtnY + 13, Math.max(w, MOBILE.tap), 44, 0x000000, 0.001)
-          .setInteractive({ useHandCursor: true })
-          .setDepth(DS.overlay.goals + 2);
-        this.content.add(treeHit);
-        const treeBtn = this.scene.add.graphics().setDepth(DS.overlay.goals + 3);
-        treeBtn.fillStyle(UNIFIED.color, 1);
-        treeBtn.fillRoundedRect(startX, treeBtnY, w, 26, 8);
-        treeBtn.lineStyle(1.5, UNIFIED.colorLo, 0.8);
-        treeBtn.strokeRoundedRect(startX, treeBtnY, w, 26, 8);
-        this.content.add(treeBtn);
-        treeHit.on('pointerdown', () => this.scene.socket?.emit('tree-claim', { nodeId: node.id }));
-        this.content.add(this.scene.add.text(
-          startX + w / 2, treeBtnY + 13, `Забрать: ${node.reward}`,
-          { fontSize: `${MOBILE.font.caption}px`, color: '#fcf8f0', fontStyle: 'bold' }
-        ).setOrigin(0.5).setDepth(DS.overlay.goals + 4));
-        y += 50;
-      } else {
-        y += 24;
+      const cardH = canClaim ? 86 : 62;
+      const card = createCard(scene, 0, y, w, cardH, {
+        radius: DS.radius.lg,
+        fill: canClaim ? DS.colors.bg.elevated : DS.colors.bg.secondary,
+        accent: canClaim ? DS.colors.brand.secondary : claimed ? null : DS.colors.ui.border,
+      });
+      parent.add(card);
+
+      const title = scene.add.text(16, 12, node.text, {
+        fontSize: `${DS.font.size.sm}px`,
+        fontFamily: DS.font.family.base,
+        fontStyle: canClaim ? 'bold' : 'normal',
+        color: claimed ? DS.colors.text.muted : DS.colors.text.primary,
+      }).setOrigin(0, 0);
+      card.body.add(title);
+
+      const rewardText = scene.add.text(w - 16, 12, node.reward, {
+        fontSize: `${DS.font.size.xs}px`,
+        fontFamily: DS.font.family.base,
+        fontStyle: 'bold',
+        color: claimed ? DS.colors.text.muted : DS.colors.brand.dark,
+      }).setOrigin(1, 0);
+      card.body.add(rewardText);
+
+      // Прогресс: полоса + «сделано N из M».
+      const barW = w - 32;
+      const bar = createProgressBar(scene, 16, 38, barW, 7, {
+        value: Math.min(1, value / node.target),
+        fill: claimed ? DS.colors.bg.tertiary : done ? DS.colors.brand.secondary : DS.colors.brand.primary,
+      });
+      card.body.add(bar);
+
+      const progressLabel = claimed ? '✓ получено' : `${Math.min(value, node.target)} / ${node.target}`;
+      const progressText = scene.add.text(w - 16, 34, progressLabel, {
+        fontSize: `${DS.font.size.xs - 1}px`,
+        fontFamily: DS.font.family.base,
+        color: claimed ? DS.colors.text.muted : DS.colors.text.secondary,
+      }).setOrigin(1, 0);
+      card.body.add(progressText);
+
+      if (canClaim) {
+        const claimW = w - 32;
+        const claim = createButton(scene, w / 2, 64 + 18, claimW, 40, 'Забрать награду', () => {
+          this.scene.socket?.emit('tree-claim', { nodeId: node.id });
+        }, {
+          variant: 'secondary',
+          fontSize: DS.font.size.sm,
+        });
+        card.body.add(claim);
       }
+
+      y += cardH + 8;
     });
+
+    return y;
   }
 
-  sectionTitle(x, y, text) {
-    this.content.add(this.scene.add.text(x, y, text, {
-      fontSize: '14px', color: 0xe8c55a, fontStyle: 'bold', fontFamily: UI.fontTitle
-    }));
-    return y + 24;
-  }
-
-  destroy() {
-    this.scene.showSignpost?.();
-    super.destroy();
+  destroy(fromScene) {
+    if (this._destroyed) return;
+    this._destroyed = true;
+    this.scroll && this.scroll.destroy?.();
+    this.arrows && this.arrows.destroy?.();
+    const ui = this.ui;
+    this.ui = null;
+    if (ui) ui.close();
+    try { super.destroy(fromScene); } catch {}
   }
 
   update(goals) {

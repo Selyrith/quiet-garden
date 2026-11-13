@@ -1,125 +1,124 @@
-import { createUnifiedButton, createUnifiedToggle } from './ui-unified.js';
+import Phaser from 'phaser';
 import { DS } from './DesignSystem.js';
-import { MOBILE } from './MobileScale.js';
-import { UI } from './ui-theme.js';
+import {
+  openOverlay,
+  createButton,
+  createToggle,
+  createListRow,
+} from './ui-kit.js';
 
-export class SettingsOverlay {
+/**
+ * Настройки звука и движения.
+ *
+ * Было: класс без контейнера, который рисовал панель отдельными объектами
+ * поверх сцены, сам ловил ESC и сам уничтожал части. Теперь — обычный
+ * оверлей на общем скелете: та же шапка, тот же крестик, закрытие по
+ * фону, ESC обрабатывается здесь же.
+ */
+export class SettingsOverlay extends Phaser.GameObjects.Container {
   constructor(scene) {
+    super(scene, 0, 0);
+    scene.add.existing(this);
+    this.setDepth(DS.overlay.settings);
     this.scene = scene;
-    this.active = true;
+    this._destroyed = false;
 
-    scene.hideSignpost?.();
-    if (scene.signpostDom) { scene.signpostDom.destroy(); scene.signpostDom = null; }
-
-    const w = scene.scale.width;
-    const h = scene.scale.height;
-
-    const panelW = Math.min(360, w - 40);
-    const panelH = 380;
-    const panelX = w / 2;
-    const panelY = h / 2;
-
-    this.bg = scene.add.rectangle(w / 2, h / 2, w, h, 0x3d2e20, 0.9)
-      .setDepth(DS.overlay.settings);
-
-    this.closeHit = scene.add.rectangle(w / 2, h / 2, w, h, 0x3d2e20, 0.001)
-      .setDepth(DS.overlay.settings + 1)
-      .setInteractive();
-    this.closeHit.on('pointerdown', (pointer) => {
-      const hw = panelW / 2;
-      const hh = panelH / 2;
-      const dx = Math.abs(pointer.x - panelX);
-      const dy = Math.abs(pointer.y - panelY);
-      if (dx > hw || dy > hh) {
-        this.destroy();
-      }
+    this.ui = openOverlay(scene, {
+      title: '⚙ Настройки',
+      subtitle: 'Тишина, движение и начало заново',
+      depth: DS.overlay.settings,
+      maxW: 420,
+      maxH: 520,
+      padding: 20,
+      container: this,
+      onClose: () => this.destroy(),
     });
+
+    this.render();
 
     this.escKey = scene.input.keyboard.addKey('ESC', false);
     this.escKey.once('down', () => this.destroy());
-
-    this.panel = scene.add.container(panelX, panelY).setDepth(DS.overlay.settings + 2);
-
-    const bgPanel = scene.add.rectangle(0, 0, panelW, panelH, 0xf7f1e6, 0.98).setStrokeStyle(2, 0xe8c55a);
-    this.panel.add(bgPanel);
-
-    const title = scene.add.text(0, -panelH / 2 + 24, '⚙ Настройки', {
-      fontSize: '20px', color: '#3d2e20', fontStyle: 'bold'
-    }).setOrigin(0.5);
-    this.panel.add(title);
-
-    // Закрытие: тач-таргет 48×48, явная глубина внутри контейнера.
-    const closeBtn = scene.add.text(panelW / 2 - 28, -panelH / 2 + 28, '✕', {
-      fontSize: `${MOBILE.font.title}px`, color: UI.css.textMuted, fontStyle: 'bold'
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(DS.overlay.settings + 3);
-    const closeHit = scene.add.rectangle(panelW / 2 - 28, -panelH / 2 + 28, MOBILE.tap, MOBILE.tap, 0x000000, 0.001)
-      .setInteractive({ useHandCursor: true }).setDepth(DS.overlay.settings + 2);
-    closeHit.on('pointerdown', () => this.destroy());
-    this.panel.add(closeHit);
-    this.panel.add(closeBtn);
-
-    let y = -panelH / 2 + 70;
-
-    // --- Тумблер звука ---
-    const soundMuted = localStorage.getItem('qg_mute') === '1';
-    const soundLabel = scene.add.text(-panelW / 2 + 24, y, soundMuted ? '🔇 Звук выкл' : '🔊 Звук вкл', {
-      fontSize: '16px', color: '#3d2e20'
-    }).setOrigin(0, 0.5);
-    this.panel.add(soundLabel);
-
-    const soundToggle = createUnifiedToggle(scene, panelW / 2 - 30, y, '', !soundMuted, (on) => {
-      localStorage.setItem('qg_mute', on ? '0' : '1');
-      scene.sound.toggleMute();
-      soundLabel.setText(on ? '🔊 Звук вкл' : '🔇 Звук выкл');
-    });
-    this.panel.add(soundToggle);
-
-    y += 50;
-
-    // --- Тумблер уменьшения движения ---
-    const reduceMotion = localStorage.getItem('qg_reduce_motion') === '1';
-    const motionLabel = scene.add.text(-panelW / 2 + 24, y, reduceMotion ? '🍃 Уменьшение движения вкл' : '🍃 Уменьшение движения выкл', {
-      fontSize: '16px', color: '#3d2e20'
-    }).setOrigin(0, 0.5);
-    this.panel.add(motionLabel);
-
-    const motionToggle = createUnifiedToggle(scene, panelW / 2 - 30, y, '', !reduceMotion, (on) => {
-      localStorage.setItem('qg_reduce_motion', on ? '0' : '1');
-      motionLabel.setText(on ? '🍃 Уменьшение движения вкл' : '🍃 Уменьшение движения выкл');
-      this.scene.showToast(on ? 'Анимации отключены — перезайдите для применения' : 'Анимации включены — перезайдите для применения');
-    });
-    this.panel.add(motionToggle);
-
-    y += 55;
-
-    // --- Кнопка сброса онбординга (деструктивная — error цвет) ---
-    const resetBtn = scene.add.rectangle(0, y, panelW - 48, 44, 0xc2654a).setStrokeStyle(2, 0xe8c55a).setInteractive({ useHandCursor: true });
-    const resetText = scene.add.text(0, y, 'Сбросить онбординг', { fontSize: '15px', color: '#fcf8f0', fontStyle: 'bold' }).setOrigin(0.5);
-    resetBtn.on('pointerdown', () => {
-      localStorage.removeItem('qg_onboarded');
-      this.scene.showToast('Онбординг сброшен');
-    });
-    this.panel.add([resetBtn, resetText]);
-
-    y += 55;
-
-    // --- Кнопка закрытия (единый цвет) ---
-    const closeBottomBtn = createUnifiedButton(scene, 0, y, panelW - 48, MOBILE.buttonH, 'Закрыть', () => this.destroy(),
-      { depth: DS.overlay.settings + 2 });
-    closeBottomBtn.setDepth(DS.overlay.settings + 2);
-    this.panel.add(closeBottomBtn);
   }
 
-  destroy() {
-    if (!this.active) return;
-    this.active = false;
-    this.scene.showSignpost?.();
-    try { if (this.escKey) this.escKey.off('down'); } catch {}
-    if (this.panel) this.panel.destroy();
-    if (this.bg) this.bg.destroy();
-    if (this.closeHit) this.closeHit.destroy();
-    try {
-      if (this.scene && this.scene.events) this.scene.events.emit('settings-destroyed');
-    } catch {}
+  render() {
+    const scene = this.scene;
+    const C = this.ui.content;
+    this.ui.body.removeAll(true);
+
+    const rowH = 58;
+    const gap = 12;
+    let y = C.top;
+
+    // --- Звук ---
+    const soundOn = localStorage.getItem('qg_mute') !== '1';
+    const soundRow = createListRow(scene, C.left, y, C.width, rowH, {
+      icon: soundOn ? '🔊' : '🔇',
+      label: soundOn ? 'Звук включён' : 'Звук выключен',
+    });
+    this.soundRow = soundRow;
+    this.ui.body.add(soundRow);
+
+    const soundToggle = createToggle(scene, C.right - 40, y + rowH / 2, soundOn, (on) => {
+      localStorage.setItem('qg_mute', on ? '0' : '1');
+      scene.sound.toggleMute?.();
+      soundRow.setLabel(on ? 'Звук включён' : 'Звук выключен');
+      soundRow.iconText?.setText(on ? '🔊' : '🔇');
+    });
+    this.ui.body.add(soundToggle);
+    y += rowH + gap;
+
+    // --- Уменьшение движения ---
+    const motionOn = localStorage.getItem('qg_reduce_motion') !== '1';
+    const motionRow = createListRow(scene, C.left, y, C.width, rowH, {
+      icon: '🍃',
+      label: motionOn ? 'Анимации включены' : 'Анимации уменьшены',
+    });
+    this.ui.body.add(motionRow);
+
+    const motionToggle = createToggle(scene, C.right - 40, y + rowH / 2, motionOn, (on) => {
+      localStorage.setItem('qg_reduce_motion', on ? '0' : '1');
+      motionRow.setLabel(on ? 'Анимации включены' : 'Анимации уменьшены');
+      scene.showToast?.(on ? 'Анимации включены — перезайдите для применения' : 'Анимации уменьшены — перезайдите для применения');
+    });
+    this.ui.body.add(motionToggle);
+    y += rowH + gap + 10;
+
+    // --- Сброс онбординга (деструктивно, но не страшно) ---
+    const reset = createButton(scene, C.left + C.width / 2, y + 24, C.width, 46,
+      'Пройти обучение заново', () => {
+        localStorage.removeItem('qg_onboarded');
+        scene.showToast?.('Обучение включено — перезайдите в игру');
+      }, {
+        variant: 'danger',
+        fontSize: DS.font.size.base,
+      });
+    this.ui.body.add(reset);
+
+    const hint = scene.add.text(C.left + C.width / 2, y + 58, 'Обучение покажет основы сада в первый же вход', {
+      fontSize: `${DS.font.size.xs}px`,
+      fontFamily: DS.font.family.base,
+      color: DS.colors.text.muted,
+      align: 'center',
+      wordWrap: { width: C.width },
+    }).setOrigin(0.5, 0);
+    this.ui.body.add(hint);
+
+    // --- Закрыть ---
+    const closeButton = createButton(scene, C.left + C.width / 2, C.bottom - 26, C.width, 48, 'Готово', () => this.destroy(), {
+      variant: 'ghost',
+      fontSize: DS.font.size.base,
+    });
+    this.ui.body.add(closeButton);
+  }
+
+  destroy(fromScene) {
+    if (this._destroyed) return;
+    this._destroyed = true;
+    try { this.escKey?.off('down'); } catch {}
+    const ui = this.ui;
+    this.ui = null;
+    if (ui) ui.close();
+    try { this.scene?.events?.emit('settings-destroyed'); } catch {}
+    try { super.destroy(fromScene); } catch {}
   }
 }

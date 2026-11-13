@@ -4,18 +4,43 @@ import { CHAPTERS } from '../../shared/chapters.js';
 import { PlantDetailOverlay } from './PlantDetailOverlay.js';
 import { setupSearchRow } from './book/BookSearchRow.js';
 import { setupRarityTabs } from './book/BookRarityTabs.js';
-import { renderGrid } from './book/BookGrid.js';
-import { UNIFIED } from './ui-unified.js';
+import { renderGrid, chapterPerPage } from './book/BookGrid.js';
 import { DS } from './DesignSystem.js';
-import { UI } from './ui-theme.js';
+import { openOverlay, color, drawInnerFrame, drawVineCorners } from './ui-kit.js';
+
+/**
+ * Книга растений — тот же скелет, что у остальных окон.
+ *
+ * Было: книга сама рисовала затемнение (0.85 против общих 0.55), сама лепила
+ * крестик в другом цвете, сама строила обложку на весь экран и держала
+ * собственные координаты «половины книги» (-W/4). Из-за этого её шапка
+ * разъезжалась, а вкладки редкости уезжали под обложку.
+ *
+ * Стало: затемнение, виньетка, крестик и закрытие по тапу — из ui-kit
+ * (режим `bare`: панель книга рисует сама, киту остаётся обвязка). Тело кита
+ * становится локальной системой координат фолианта: (0,0) — центр переплёта.
+ * Все привязки вёрстки книга объявляет полями (pageTop/pageLeftX/pageW/
+ * gridTop/tabsY/searchY/rarityY), и по ним же её проверяют тесты.
+ */
+
+// Переплёт и бумага — производные от токенов DS, без «своих» оттенков.
+const COVER = color(DS.colors.garden.soilDark);        // Rich Soil — кожа
+const COVER_EDGE = color(DS.colors.garden.soilLight);  // Earth — тиснение
+const PAPER = color(DS.colors.bg.primary);             // Sunlit Cream — страница
+const INK = DS.colors.text.primary;
+const INK_SOFT = DS.colors.text.muted;
+
+/** Ширина, с которой книга раскрывается на разворот (планшет/десктоп). */
+const SPREAD_MIN_WIDTH = 720;
+/** Поле бумаги внутри переплёта. */
+const PAGE_PAD = 16;
+/** Ширина корешка на развороте. */
+const SPINE_W = 26;
 
 export class BookOverlay extends Phaser.GameObjects.Container {
   constructor(scene, collection) {
-    const cam = scene.cameras.main;
-    try {
     super(scene, 0, 0);
-    scene.add.existing(this);
-    this.setDepth(DS.overlay.book);
+
     this.scene = scene;
     this.collection = collection;
 
@@ -29,133 +54,274 @@ export class BookOverlay extends Phaser.GameObjects.Container {
     this.searchInput = null;
     this.searchDestroy = null;
     this.isAnimating = false;
+    this._destroyed = false;
 
-    scene.hideSignpost?.();
-    if (scene.signpostDom) { scene.signpostDom.destroy(); scene.signpostDom = null; }
+    try {
+      scene.add.existing(this);
+      this.setDepth(DS.overlay.book);
 
-    this.bookW = Math.min(cam.width * 0.95, 900);
-    this.bookH = Math.min(cam.height * 0.85, 600);
-
-    this.bg = scene.add.rectangle(0, 0, cam.width, cam.height, 0x000000, 0.85).setOrigin(0).setInteractive();
-    this.add(this.bg);
-
-    this.bookContainer = scene.add.container(cam.width / 2, cam.height / 2);
-    this.add(this.bookContainer);
-
-    this.buildBookBase();
-    this.buildUI();
-    this.renderPage();
-
-    this.once('destroy', () => { this.scene.showSignpost?.(); });
+      this.measure();
+      this.attachKit();
+      this.buildCover();
+      this.buildHeader();
+      this.buildViewTabs();
+      this.buildPager();
+      this.buildUI();
+      this.renderPage();
     } catch (e) {
-    console.error('[BookOverlay] Ошибка:', e);
-    scene.add.text(scene.scale.width / 2, scene.scale.height / 2, 'КНИГА УПАЛА:\n' + e.message, {
-      fontSize: '13px', color: '#ff5555', backgroundColor: '#000000cc',
-      padding: { x: 10, y: 10 }, align: 'center', wordWrap: { width: scene.scale.width - 40 }
-    }).setOrigin(0.5).setDepth(DS.overlay.fatal).setScrollFactor(0);
+      console.error('[BookOverlay] Ошибка:', e);
+      scene.add.text(scene.scale.width / 2, scene.scale.height / 2, 'КНИГА УПАЛА:\n' + e.message, {
+        fontSize: '13px', color: '#ff5555', backgroundColor: '#000000cc',
+        padding: { x: 10, y: 10 }, align: 'center', wordWrap: { width: scene.scale.width - 40 },
+      }).setOrigin(0.5).setDepth(DS.overlay.fatal).setScrollFactor(0);
     }
   }
 
-  buildBookBase() {
-    const scene = this.scene;
-    const W = this.bookW;
-    const H = this.bookH;
+  // --- вёрстка ---------------------------------------------------------------
 
-    this.shield = scene.add.rectangle(0, 0, W + 40, H + 60, 0x000000, 0.001).setInteractive();
-    this.shield.on('pointerdown', (p, x, y, e) => e.stopPropagation());
+  /**
+   * Размеры фолианта и полосы шапки — в координатах экрана (тело кита стоит
+   * в (0,0), поэтому локальные и мировые координаты совпадают, и вёрстку
+   * можно сверять с прямоугольниками объектов напрямую).
+   *
+   * Полосы шапки считаются СВЕРХУ ВНИЗ и объявлены полями: заголовок →
+   * счётчик → вкладки → поиск → фильтр редкости.
+   */
+  measure() {
+    const cam = this.scene.cameras.main;
+
+    this.spread = cam.width >= SPREAD_MIN_WIDTH;
+    this.bookW = Math.min(cam.width - 44, 880);
+    this.bookH = Math.min(cam.height - 44, 620);
+    this.coverW = this.bookW + 20;
+    this.coverH = this.bookH + 20;
+    this.coverX = (cam.width - this.coverW) / 2;
+    this.coverY = (cam.height - this.coverH) / 2;
+    this.coverCx = cam.width / 2;
+    this.coverCy = cam.height / 2;
+
+    const paperW = this.bookW - PAGE_PAD * 2;
+    const spineW = this.spread ? SPINE_W : 0;
+
+    this.pageTop = this.coverY + 10 + PAGE_PAD;
+    this.pageBottom = this.coverY + this.coverH - 10 - PAGE_PAD;
+    this.pageW = this.spread ? (paperW - spineW) / 2 : paperW;
+    this.pageLeftX = this.coverX + 10 + PAGE_PAD;
+    this.pageRightX = this.spread ? this.pageLeftX + this.pageW + spineW : this.pageLeftX;
+
+    // Шапка: заголовок → счётчик → вкладки → поиск → фильтр редкости.
+    this.tabsY = this.pageTop + 58;
+    this.searchY = this.pageTop + 98;
+    this.rarityY = this.pageTop + 132;
+    this.gridTop = this.pageTop + 162;
+    this.gridBottom = this.pageBottom - 36;
+
+    // Поиск и фильтр редкости живут на правой странице разворота.
+    this.tabsX = this.pageLeftX;
+    this.searchX = this.spread ? this.pageRightX : this.pageLeftX;
+    this.rarityX = this.searchX;
+
+    // Метрики сетки: сколько карточек влезает в страницу.
+    this.cols = 4;
+    this.cardGap = 10;
+    const gridH = this.gridBottom - this.gridTop;
+    const byWidth = Math.floor((this.pageW - (this.cols - 1) * this.cardGap) / this.cols);
+    let rows = Math.max(1, Math.floor((gridH + this.cardGap) / (byWidth + this.cardGap)));
+    this.cardSize = Math.max(28, Math.min(byWidth, Math.floor((gridH - (rows - 1) * this.cardGap) / rows)));
+    rows = Math.max(1, Math.floor((gridH + this.cardGap) / (this.cardSize + this.cardGap)));
+    this.rows = rows;
+    this.perPage = this.cols * rows * (this.spread ? 2 : 1);
+  }
+
+  /** Общий скелет: затемнение, виньетка, крестик, закрытие по тапу. */
+  attachKit() {
+    this.ui = openOverlay(this.scene, {
+      bare: true,
+      depth: DS.overlay.book,
+      container: this,
+      maxW: this.coverW,
+      maxH: this.coverH,
+      widthRatio: 1,
+      heightRatio: 1,
+      padding: 0,
+      closeOnScrim: true,
+      onClose: () => this.destroy(),
+    });
+
+    // Тело кита — холст книги. Оно уже стоит в (0,0), а размеры книги
+    // посчитаны в экранных координатах: пересчёт на каждом шаге не нужен.
+    this.bookContainer = this.ui.body;
+  }
+
+  buildCover() {
+    const scene = this.scene;
+    const warm = color(DS.colors.text.secondary);
+
+    // Щит: в bare-режиме скелет не рисует панель, и без него тап по странице
+    // проваливался бы в затемнение и закрывал книгу.
+    this.shield = scene.add.rectangle(this.coverCx, this.coverCy, this.coverW, this.coverH, 0x000000, 0.001)
+      .setInteractive();
     this.bookContainer.add(this.shield);
 
+    // Тёплая многослойная тень, как у панелей кита (не чёрная).
     const shadow = scene.add.graphics();
-    shadow.fillStyle(0x000000, 0.6);
-    shadow.fillRoundedRect(-W/2 + 10, -H/2 + 10, W, H, 20);
+    shadow.fillStyle(warm, 0.06);
+    shadow.fillRoundedRect(this.coverX + 2, this.coverY + 14, this.coverW, this.coverH, DS.radius.xl + 6);
+    shadow.fillStyle(warm, 0.10);
+    shadow.fillRoundedRect(this.coverX - 3, this.coverY + 7, this.coverW, this.coverH, DS.radius.xl + 3);
+    shadow.fillStyle(warm, 0.14);
+    shadow.fillRoundedRect(this.coverX - 8, this.coverY + 2, this.coverW, this.coverH, DS.radius.xl);
     this.bookContainer.add(shadow);
 
+    // Кожаный переплёт + тиснение общей рамкой кита.
     const cover = scene.add.graphics();
-    cover.fillStyle(0x2c1b10, 1);
-    cover.fillRoundedRect(-W/2 - 10, -H/2 - 10, W + 20, H + 20, 20);
-    cover.lineStyle(4, 0x5d4037, 1);
-    cover.strokeRoundedRect(-W/2 - 10, -H/2 - 10, W + 20, H + 20, 20);
+    cover.fillStyle(COVER, 1);
+    cover.fillRoundedRect(this.coverX, this.coverY, this.coverW, this.coverH, DS.radius.xl);
+    cover.lineStyle(3, COVER_EDGE, 1);
+    cover.strokeRoundedRect(this.coverX, this.coverY, this.coverW, this.coverH, DS.radius.xl);
+    drawInnerFrame(cover, this.coverX, this.coverY, this.coverW, this.coverH, DS.radius.xl, 8);
+    // Лоза по верхним углам переплёта — книга тоже «растёт в саду».
+    drawVineCorners(cover, this.coverX, this.coverY, this.coverW, this.coverH, DS.radius.xl);
+
+    // Латунные уголки-заклёпки: четыре точки, как на настоящем фолианте.
+    const studR = 3.4;
+    for (const [sx, sy] of [
+      [this.coverX + 14, this.coverY + 14],
+      [this.coverX + this.coverW - 14, this.coverY + 14],
+      [this.coverX + 14, this.coverY + this.coverH - 14],
+      [this.coverX + this.coverW - 14, this.coverY + this.coverH - 14],
+    ]) {
+      cover.fillStyle(0x2C1B10, 0.9);
+      cover.fillCircle(sx, sy + 1, studR + 1.2);
+      cover.fillStyle(0xE8C55A, 1);
+      cover.fillCircle(sx, sy, studR);
+      cover.fillStyle(0xFFF3B0, 0.85);
+      cover.fillCircle(sx - studR * 0.3, sy - studR * 0.35, studR * 0.45);
+    }
     this.bookContainer.add(cover);
 
-    const leftPage = scene.add.graphics();
-    leftPage.fillStyle(0xf5e6c8, 1);
-    leftPage.fillRoundedRect(-W/2, -H/2, W/2 - 10, H, { tl: 12, bl: 12, tr: 0, br: 0 });
-    leftPage.fillStyle(0x000000, 0.08);
-    leftPage.fillRect(-30, -H/2, 20, H);
-    this.bookContainer.add(leftPage);
+    // Бумага: на развороте — две страницы и корешок, иначе — одна страница.
+    const pages = scene.add.graphics();
+    const paperH = this.pageBottom - this.pageTop;
 
-    const rightPage = scene.add.graphics();
-    rightPage.fillStyle(0xf5e6c8, 1);
-    rightPage.fillRoundedRect(10, -H/2, W/2 - 10, H, { tl: 0, bl: 0, tr: 12, br: 12 });
-    rightPage.fillStyle(0x000000, 0.08);
-    rightPage.fillRect(10, -H/2, 20, H);
-    this.bookContainer.add(rightPage);
+    pages.fillStyle(PAPER, 1);
+    if (this.spread) {
+      pages.fillRoundedRect(this.pageLeftX, this.pageTop, this.pageW, paperH, { tl: 10, bl: 10, tr: 0, br: 0 });
+      pages.fillRoundedRect(this.pageRightX, this.pageTop, this.pageW, paperH, { tl: 0, bl: 0, tr: 10, br: 10 });
 
-    const spine = scene.add.graphics();
-    spine.fillStyle(0x2c1b10, 1);
-    spine.fillRect(-10, -H/2, 20, H);
-    this.bookContainer.add(spine);
+      const spineX = this.pageLeftX + this.pageW;
+      pages.fillStyle(COVER, 1);
+      pages.fillRect(spineX, this.pageTop, this.pageRightX - spineX, paperH);
+      // Тень у сгиба с обеих сторон корешка.
+      pages.fillStyle(color(DS.colors.text.primary), 0.10);
+      pages.fillRect(spineX - 14, this.pageTop, 14, paperH);
+      pages.fillRect(this.pageRightX, this.pageTop, 14, paperH);
+    } else {
+      pages.fillRoundedRect(this.pageLeftX, this.pageTop, this.pageW, paperH, 10);
+      // Сгиб одностраничной книги — левая кромка (там же центр переплёта).
+      pages.fillStyle(color(DS.colors.text.primary), 0.07);
+      pages.fillRect(this.pageLeftX, this.pageTop, 16, paperH);
+    }
+    this.bookContainer.add(pages);
+  }
 
-    const ribbon = scene.add.graphics();
-    ribbon.fillStyle(0xc62828, 1);
-    ribbon.fillRect(0, H/2 - 10, 12, 40);
-    ribbon.fillTriangle(0, H/2 + 30, 12, H/2 + 30, 6, H/2 + 40);
-    this.bookContainer.add(ribbon);
+  buildHeader() {
+    const scene = this.scene;
 
-    let unlocked = 0;
-    for (const seed of getAllSeeds()) if (this.collection.has(seed)) unlocked++;
+    this.title = scene.add.text(this.pageLeftX + 6, this.pageTop + 14, '📖 Книга растений', {
+      fontSize: `${DS.font.size.lg}px`,
+      fontFamily: DS.font.family.title,
+      color: INK,
+    }).setOrigin(0, 0);
 
-    this.title = scene.add.text(-W/4, -H/2 + 30, `📖 Книга Растений`, {
-      fontSize: '24px', color: '#3e2723', fontStyle: 'bold', fontFamily: 'Nunito, Georgia, serif'
-    }).setOrigin(0.5);
-
-    this.counterText = scene.add.text(-W/4, -H/2 + 60, `Открыто: ${unlocked} из ${TOTAL_PLANTS}`, {
-      fontSize: '15px', color: '#8d6e63', fontStyle: 'italic', fontFamily: 'Nunito, Georgia, serif'
-    }).setOrigin(0.5);
+    this.counterText = scene.add.text(this.pageLeftX + 6, this.pageTop + 40, '', {
+      fontSize: `${DS.font.size.sm}px`,
+      fontFamily: DS.font.family.base,
+      color: INK_SOFT,
+    }).setOrigin(0, 0);
 
     this.bookContainer.add([this.title, this.counterText]);
+  }
 
-    const tabY = -H/2 - 26;
-    const tabW = 120;
-    const tabGap = 8;
-    const leftTabX = -W/2 + 20 + tabW / 2;
-    const rightTabX = -W/2 + 20 + tabW + tabGap + tabW / 2;
+  /** Переключатель «Главы / Растения» — две закладки над страницей. */
+  buildViewTabs() {
+    const scene = this.scene;
+    const gap = 8;
+    const tabW = Math.floor((this.pageW - gap) / 2);
+    const tabH = 30;
+    const hitH = 36;
 
-    this.chaptersHit = scene.add.rectangle(leftTabX, tabY, tabW, 40, 0x000000, 0.001).setInteractive({ useHandCursor: true });
-    this.chaptersBtn = scene.add.text(leftTabX, tabY, '🌿 Главы', {
-      fontSize: `${DS.font.size.base}px`, color: UI.css.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle
+    const defs = [
+      { id: 'chapters', label: '🌿 Главы' },
+      { id: 'plants', label: '📖 Растения' },
+    ];
+
+    this.tabButtons = new Map();
+
+    defs.forEach((def, i) => {
+      const c = scene.add.container(this.tabsX + i * (tabW + gap), this.tabsY);
+
+      const bg = scene.add.graphics();
+      const text = scene.add.text(tabW / 2, tabH / 2, def.label, {
+        fontSize: `${DS.font.size.sm}px`,
+        fontFamily: DS.font.family.base,
+        fontStyle: 'bold',
+        color: INK,
+      }).setOrigin(0.5);
+
+      const drawBg = (active) => {
+        bg.clear();
+        bg.fillStyle(active ? color(DS.colors.brand.primary) : color(DS.colors.bg.secondary), 1);
+        bg.fillRoundedRect(0, 0, tabW, tabH, 7);
+        bg.lineStyle(1.2, active ? color(DS.colors.brand.secondary) : color(DS.colors.ui.border), 1);
+        bg.strokeRoundedRect(0, 0, tabW, tabH, 7);
+        text.setColor(active ? DS.colors.text.inverse : INK);
+      };
+      drawBg(false);
+      c.add([bg, text]);
+
+      const hit = scene.add.rectangle(tabW / 2, tabH / 2, tabW, hitH, 0x000000, 0.001)
+        .setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', (pointer, lx, ly, event) => {
+        event?.stopPropagation?.();
+        if (this.viewMode === def.id && !this.activeChapter) return;
+        this.viewMode = def.id;
+        this.activeChapter = null;
+        this.page = 0;
+        this.scene.sound?.uiClick?.();
+        this.renderPage();
+      });
+      c.add(hit);
+
+      this.tabButtons.set(def.id, { container: c, bg, text, drawBg });
+      this.bookContainer.add(c);
+    });
+  }
+
+  buildPager() {
+    const scene = this.scene;
+    const y = this.pageBottom - 14;
+    const rightEdge = this.spread ? this.pageRightX + this.pageW : this.pageLeftX + this.pageW;
+    const style = {
+      fontSize: `${DS.font.size.lg}px`,
+      fontFamily: DS.font.family.base,
+      color: INK_SOFT,
+    };
+
+    this.prevBtn = scene.add.text(this.pageLeftX + 22, y, '◀', style)
+      .setOrigin(0.5).setInteractive({ useHandCursor: true });
+    this.nextBtn = scene.add.text(rightEdge - 22, y, '▶', style)
+      .setOrigin(0.5).setInteractive({ useHandCursor: true });
+    this.pageText = scene.add.text(this.coverCx, y, '', {
+      fontSize: `${DS.font.size.sm}px`,
+      fontFamily: DS.font.family.base,
+      fontStyle: 'bold',
+      color: DS.colors.text.secondary,
     }).setOrigin(0.5);
-    this.chaptersHit.on('pointerdown', () => { this.viewMode = 'chapters'; this.activeChapter = null; this.page = 0; this.renderPage(); });
-
-    this.plantsHit = scene.add.rectangle(rightTabX, tabY, tabW, 40, 0x000000, 0.001).setInteractive({ useHandCursor: true });
-    this.plantsBtn = scene.add.text(rightTabX, tabY, '📖 Растения', {
-      fontSize: `${DS.font.size.base}px`, color: UI.css.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle
-    }).setOrigin(0.5);
-    this.plantsHit.on('pointerdown', () => { this.viewMode = 'plants'; this.activeChapter = null; this.page = 0; this.renderPage(); });
-
-    this.bookContainer.add([this.chaptersHit, this.chaptersBtn, this.plantsHit, this.plantsBtn]);
-
-    const closePad = 18;
-    // Use book container coordinates (book is centered at 0,0 in bookContainer)
-    const closeX = this.bookW / 2 - closePad - 22;
-    const closeY = -this.bookH / 2 + closePad + 22;
-    this.closeHit = scene.add.rectangle(closeX, closeY, 46, 46, UNIFIED.color).setInteractive({ useHandCursor: true });
-    this.closeHit.setStrokeStyle(2, UNIFIED.colorHi);
-    this.closeBg = scene.add.circle(closeX, closeY, 23, UNIFIED.colorLo, 0.95);
-    this.closeBg.setStrokeStyle(2, UNIFIED.colorHi);
-    this.closeBtn = scene.add.text(closeX, closeY, '✕', {
-      fontSize: '26px', color: '#3e2723', fontStyle: 'bold'
-    }).setOrigin(0.5);
-    this.closeHit.on('pointerdown', () => this.destroy());
-    this.bookContainer.add([this.closeHit, this.closeBg, this.closeBtn]);
-
-    const pagerY = H/2 - 25;
-    this.prevBtn = scene.add.text(-W/4, pagerY, '◀', { fontSize: '28px', color: '#8d6e63' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    this.nextBtn = scene.add.text(W/4, pagerY, '▶', { fontSize: '28px', color: '#8d6e63' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    this.pageText = scene.add.text(0, pagerY, '', { fontSize: '16px', color: '#5d4037', fontFamily: 'Nunito, Georgia, serif', fontStyle: 'bold' }).setOrigin(0.5);
 
     this.prevBtn.on('pointerdown', () => this.changePage(-1));
     this.nextBtn.on('pointerdown', () => this.changePage(1));
+
     this.bookContainer.add([this.prevBtn, this.nextBtn, this.pageText]);
   }
 
@@ -165,23 +331,50 @@ export class BookOverlay extends Phaser.GameObjects.Container {
 
     const searchUI = setupSearchRow(this);
     this.searchInput = searchUI.searchInput;
-    this.searchDom = searchUI.searchDom;
     this.searchDestroy = searchUI.destroySearchDom;
 
     this.rarityButtons = setupRarityTabs(this);
   }
 
+  // --- состояние -------------------------------------------------------------
+
+  updateViewTabs() {
+    if (!this.tabButtons) return;
+    for (const [id, btn] of this.tabButtons) {
+      btn.drawBg(this.viewMode === id && !this.activeChapter);
+    }
+  }
+
   updateRarityTabs() {
+    if (!this.rarityButtons) return;
     for (const [id, btn] of this.rarityButtons) {
       btn.drawBg(id === this.activeRarity);
     }
+  }
+
+  countUnlocked() {
+    let unlocked = 0;
+    for (const seed of getAllSeeds()) if (this.collection.has(seed)) unlocked++;
+    return unlocked;
+  }
+
+  filterSeeds() {
+    let seeds = this.activeRarity === 'all'
+      ? getAllSeeds()
+      : getSeedsByRarity(this.activeRarity);
+
+    if (this.searchQuery) {
+      seeds = seeds.filter((s) => getPlant(s).name.toLowerCase().includes(this.searchQuery));
+    }
+    return seeds;
   }
 
   changePage(delta) {
     if (this.isAnimating) return;
     const newPage = this.page + delta;
     if (newPage < 0 || newPage >= this.totalPages) return;
-    
+    this.scene.sound?.uiClick?.();
+
     this.animatePageTurn(delta > 0 ? 'right' : 'left', () => {
       this.page = newPage;
       this.renderPage();
@@ -191,103 +384,73 @@ export class BookOverlay extends Phaser.GameObjects.Container {
   animatePageTurn(direction, onComplete) {
     this.isAnimating = true;
     const scene = this.scene;
-    const W = this.bookW;
-    const H = this.bookH;
+    const paperH = this.pageBottom - this.pageTop;
 
+    // Лист ходит вокруг корешка: на развороте это кромка правой страницы,
+    // у одностраничной книги — её центр (середина переплёта).
     const pageAnim = scene.add.graphics();
-    pageAnim.fillStyle(0xf5e6c8, 1);
-    const rectW = W/2 - 10;
-    pageAnim.fillRect(0, -H/2, rectW, H);
-    pageAnim.fillStyle(0x000000, 0.1);
-    pageAnim.fillRect(0, -H/2, 20, H);
-    
+    pageAnim.fillStyle(PAPER, 1);
+    if (this.spread) {
+      pageAnim.fillRect(0, this.pageTop, this.pageW, paperH);
+      pageAnim.fillStyle(color(DS.colors.text.primary), 0.10);
+      pageAnim.fillRect(0, this.pageTop, 18, paperH);
+      pageAnim.setPosition(this.pageRightX, 0);
+    } else {
+      pageAnim.fillRect(-this.pageW / 2, this.pageTop, this.pageW, paperH);
+      pageAnim.fillStyle(color(DS.colors.text.primary), 0.10);
+      pageAnim.fillRect(-this.pageW / 2, this.pageTop, 18, paperH);
+      pageAnim.setPosition(this.pageLeftX + this.pageW / 2, 0);
+    }
+    pageAnim.scaleX = direction === 'right' ? 1 : 0;
     this.bookContainer.add(pageAnim);
-
-    const startX = direction === 'right' ? 10 : -10 - rectW;
-    const endX = direction === 'right' ? -10 - rectW : 10;
-    pageAnim.x = startX;
 
     scene.tweens.add({
       targets: pageAnim,
-      x: endX,
-      scaleX: 0,
-      duration: 300,
+      scaleX: direction === 'right' ? 0 : 1,
+      duration: DS.motion.slow,
       ease: 'Cubic.easeInOut',
-      onUpdate: () => {
-        if (pageAnim.scaleX < 0.5) {
-          pageAnim.clear();
-          pageAnim.fillStyle(0xe8d5b7, 1);
-          pageAnim.fillRect(0, -H/2, rectW, H);
-          pageAnim.fillStyle(0x000000, 0.15);
-          pageAnim.fillRect(0, -H/2, 20, H);
-        }
-      },
       onComplete: () => {
         pageAnim.destroy();
         this.isAnimating = false;
         if (onComplete) onComplete();
-      }
+      },
     });
   }
 
-  filterSeeds() {
-    let seeds = this.activeRarity === 'all'
-      ? getAllSeeds()
-      : getSeedsByRarity(this.activeRarity);
-
-    if (this.searchQuery) {
-      seeds = seeds.filter(s => getPlant(s).name.toLowerCase().includes(this.searchQuery));
-    }
-    return seeds;
-  }
-
   renderPage() {
-    const W = this.bookW;
-    const H = this.bookH;
-
-    this.chaptersHit.fillColor = this.viewMode === 'chapters' ? 0x8bc34a : 0x000000;
-    this.chaptersHit.fillAlpha = this.viewMode === 'chapters' ? 0.25 : 0.001;
-    this.chaptersBtn.setColor(this.viewMode === 'chapters' ? '#2e7d32' : '#5d4037');
-    this.plantsHit.fillColor = this.viewMode === 'plants' ? UNIFIED.color : 0x000000;
-    this.plantsHit.fillAlpha = this.viewMode === 'plants' ? 0.25 : 0.001;
-    this.plantsBtn.setColor(this.viewMode === 'plants' ? '#0277bd' : '#5d4037');
-
-    if (this.activeChapter) {
-      const ch = CHAPTERS.find(c => c.id === this.activeChapter);
-      if (ch) {
-        const owned = ch.seeds.filter(s => this.collection.has(s)).length;
-        this.title.setText(`${ch.icon} ${ch.name}`);
-        this.counterText.setText(`Открыто: ${owned} из ${ch.seeds.length}`);
-      }
-    } else if (this.viewMode === 'chapters') {
-      let unlocked = 0;
-      for (const seed of getAllSeeds()) if (this.collection.has(seed)) unlocked++;
-      this.title.setText('📖 Главы');
-      this.counterText.setText(`Открыто: ${unlocked} из ${TOTAL_PLANTS}`);
-    } else {
-      let unlocked = 0;
-      for (const seed of getAllSeeds()) if (this.collection.has(seed)) unlocked++;
-      this.title.setText('📖 Книга Растений');
-      this.counterText.setText(`Открыто: ${unlocked} из ${TOTAL_PLANTS}`);
-    }
+    const unlocked = this.countUnlocked();
 
     let seeds = this.filterSeeds();
+    let titleText = '📖 Книга растений';
+    let counterLabel = `Открыто: ${unlocked} из ${TOTAL_PLANTS}`;
+
     if (this.activeChapter) {
-      const ch = CHAPTERS.find(c => c.id === this.activeChapter);
-      if (ch) seeds = ch.seeds;
+      const chapter = CHAPTERS.find((c) => c.id === this.activeChapter);
+      if (chapter) {
+        seeds = chapter.seeds;
+        const owned = chapter.seeds.filter((s) => this.collection.has(s)).length;
+        titleText = `${chapter.icon} ${chapter.name}`;
+        counterLabel = `Открыто: ${owned} из ${chapter.seeds.length}`;
+      }
+    } else if (this.viewMode === 'chapters') {
+      titleText = '🌿 Главы';
     }
-    this.totalPages = Math.max(1, Math.ceil(seeds.length / 32));
-    if (this.page >= this.totalPages) this.page = this.totalPages - 1;
-    if (this.page < 0) this.page = 0;
 
+    this.title.setText(titleText);
+    this.counterText.setText(counterLabel);
+
+    const isChapterList = this.viewMode === 'chapters' && !this.activeChapter;
+    const items = isChapterList ? CHAPTERS : seeds;
+    const perPage = Math.max(1, isChapterList ? chapterPerPage(this) : this.perPage);
+
+    this.totalPages = Math.max(1, Math.ceil(items.length / perPage));
+    this.page = Math.min(Math.max(0, Number.isFinite(this.page) ? this.page : 0), this.totalPages - 1);
+
+    this.updateViewTabs();
     this.updateRarityTabs();
+    renderGrid(this, items);
 
-    if (typeof this.page !== 'number' || isNaN(this.page)) this.page = 0;
-    if (typeof this.totalPages !== 'number' || isNaN(this.totalPages)) this.totalPages = Math.max(1, Math.ceil(seeds.length / 32));
-
-    renderGrid(this, seeds);
-
-    const showPager = this.viewMode === 'plants' && this.totalPages > 1;
+    const showPager = this.totalPages > 1;
     this.prevBtn.setVisible(showPager);
     this.nextBtn.setVisible(showPager);
     this.pageText.setVisible(showPager);
@@ -307,7 +470,18 @@ export class BookOverlay extends Phaser.GameObjects.Container {
   }
 
   destroy(fromScene) {
-    if (this.searchDestroy) { try { this.searchDestroy(); } catch {} this.searchDestroy = null; }
-    super.destroy(fromScene);
+    if (this._destroyed) return;
+    this._destroyed = true;
+
+    if (this.searchDestroy) {
+      try { this.searchDestroy(); } catch {}
+      this.searchDestroy = null;
+    }
+
+    const ui = this.ui;
+    this.ui = null;
+    if (ui) ui.close();
+
+    try { super.destroy(fromScene); } catch {}
   }
 }

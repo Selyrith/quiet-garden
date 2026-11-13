@@ -43,6 +43,17 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*', methods: ['GET', 'POST'] } });
 const PORT = Number(process.env.PORT) || 3002;
 
+/**
+ * pid → id активного сокета игрока.
+ *
+ * Нужна, чтобы ПОЗДНИЙ disconnect СТАРОГО сокета не выкидывал игрока,
+ * который уже переподключился новым (перезагрузка страницы, возврат из фона
+ * на телефоне). Раньше устаревший сокет удалял живую сессию из комнаты:
+ * игрок оставался в socket.io-комнате, но все его действия резались
+ * (`socketRoom` уже пуст), партнёр его не видел, а тик роста гас.
+ */
+const activeSockets = new Map();
+
 const ROOT_DIR = path.join(__dirname, '..');
 const DIST_DIR = path.join(ROOT_DIR, 'dist');
 const HAS_DIST = fs.existsSync(path.join(DIST_DIR, 'index.html'));
@@ -116,7 +127,9 @@ io.on('connection', (socket) => {
   setupGoalsHandlers(io, socket, { rooms, socketRoom });
 
   on('join-room', (payload = {}) => {
-    if (socketRoom.has(pid)) leaveCurrentRoom(socket);
+    // Игрок заходит заново (перезагрузка страницы, возврат из фона) —
+    // это осознанная смена сокета, поэтому старую сессию убираем принудительно.
+    if (socketRoom.has(pid)) leaveCurrentRoom(socket, { force: true });
 
     const requested = (payload.roomCode || '').toUpperCase().trim();
     let code, room;
@@ -161,18 +174,36 @@ io.on('connection', (socket) => {
     if (!room.hostId) room.hostId = pid;
 
     // Ник в комнате: введённый игроком (или из профиля).
-    const roomNick = resolveNickname(profile.nickname, handshakeNick, pid);
+    let roomNick = resolveNickname(profile.nickname, handshakeNick, pid);
+
+    // Два одинаковых ника в одном саду путают: «Аня» и «Аня» в списке и над
+    // аватарами. Второго помечаем номером, но вход не блокируем.
+    const taken = new Set(
+      Array.from(room.players.values())
+        .filter((p) => p && p.nickname && p.nickname !== room.players.get(pid)?.nickname)
+        .map((p) => p.nickname),
+    );
+    if (taken.has(roomNick)) {
+      let n = 2;
+      while (taken.has(`${roomNick} ·${n}`)) n++;
+      roomNick = `${roomNick} ·${n}`;
+    }
 
     // Каждого ставим на свою свободную клетку, иначе аватары
     // накладываются друг на друга и присоединившегося не видно.
     const occupied = Array.from(room.players.values()).map((p) => `${p.x},${p.y}`);
     const [spawnX, spawnY] = findSpawnTile(occupied).split(',').map(Number);
+    // Переподключение не должно «переодевать» игрока и телепортировать его:
+    // пол берём из прошлой записи или из профиля, позицию — прежнюю.
+    const previous = room.players.get(pid);
     room.players.set(pid, {
-      x: spawnX,
-      y: spawnY,
-      gender: 'male',
+      ...previous,
+      x: previous ? previous.x : spawnX,
+      y: previous ? previous.y : spawnY,
+      gender: previous?.gender || profile.gender || 'male',
       nickname: roomNick,
     });
+    activeSockets.set(pid, socket.id);
 
     const world = getWorldState();
     socket.emit('room-code', { roomCode: code });
@@ -245,6 +276,7 @@ io.on('connection', (socket) => {
     if (gender !== 'male' && gender !== 'female') return;
     const player = room.players.get(pid);
     if (player) player.gender = gender;
+    updateProfile(pid, { gender });
     io.to(code).emit('gender-updated', { playerId: pid, gender });
   });
 
@@ -390,10 +422,15 @@ io.on('connection', (socket) => {
   on('disconnect', () => leaveCurrentRoom(socket));
 });
 
-function leaveCurrentRoom(socket) {
+function leaveCurrentRoom(socket, { force = false } = {}) {
   const pid = socket.handshake.auth.playerId || socket.id;
   const code = socketRoom.get(pid);
   if (!code) return null;
+
+  // Устаревший сокет: игрок уже переподключился другим — его сессия живая.
+  const active = activeSockets.get(pid);
+  if (!force && active && active !== socket.id) return null;
+  activeSockets.delete(pid);
   const room = rooms.get(code);
   socketRoom.delete(pid);
   socket.leave(code);
@@ -401,6 +438,14 @@ function leaveCurrentRoom(socket) {
   
   room.players.delete(pid);
   if (room.roles) room.roles.delete(pid);
+
+  // Хост ушёл — передаём «корону» следующему игроку.
+  // Раньше hostId оставался за покинувшим сад, и никто не мог, например,
+  // переименовать сад или выполнить хостовые действия.
+  if (room.hostId === pid) {
+    const next = room.players.keys().next();
+    room.hostId = next.done ? null : next.value;
+  }
   const job = room.playerJobs?.get(pid);
   if (job && job.timeoutId) clearTimeout(job.timeoutId);
   room.playerJobs?.delete(pid);

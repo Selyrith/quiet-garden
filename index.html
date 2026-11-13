@@ -106,131 +106,329 @@
       z-index: 0;
     }
 
+    /* ===== ТИТУЛЬНЫЙ ЭКРАН: заставка, а не форма входа =====
+       Слои (снизу вверх): небо → солнце → облака → холмы → забор →
+       грядки → растения → пылинки → контент. Всё на transform/opacity,
+       поэтому дёшево; при prefers-reduced-motion анимации выключаются. */
     .screen {
       position: fixed; inset: 0;
-      background: none;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      display: flex; flex-direction: column; align-items: center;
       z-index: 10; width: 100%; height: 100%;
+      overflow-y: auto; overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
     }
     .screen.hidden { display: none; }
 
-    .screen .container {
-      background: linear-gradient(180deg, var(--panel-bg-strong), var(--panel-bg));
-      backdrop-filter: blur(16px);
-      width: 100%; max-width: 460px; padding: 40px 28px;
-      border-radius: var(--radius-lg); box-shadow:
-        0 24px 54px var(--shadow-card),
-        0 0 0 2px var(--border-light);
-      border: none;
+    #menuScreen {
+      background: linear-gradient(180deg,
+        #A8D2E8 0%, #CDE2DC 26%, #EFE3C6 50%, #F7F1E6 66%, #E8D9BE 100%);
     }
+
+    .menu-bg { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+
+    .bg-sun {
+      position: absolute; top: -8%; right: -16%; width: 56vw; height: 56vw;
+      border-radius: 50%;
+      background: radial-gradient(circle,
+        rgba(255,243,190,0.98) 0%, rgba(255,228,150,0.55) 34%, rgba(255,224,150,0) 68%);
+      animation: sunGlow 11s ease-in-out infinite;
+    }
+    .bg-sun::after {
+      content: ""; position: absolute; inset: -34%; border-radius: 50%;
+      background: conic-gradient(from 0deg,
+        rgba(255,240,190,0.30) 0 5deg, transparent 5deg 26deg);
+      animation: spin 110s linear infinite;
+    }
+
+    .bg-cloud {
+      position: absolute; height: 7vh; min-height: 42px; border-radius: 999px;
+      background: rgba(255,255,255,0.72); filter: blur(7px);
+      animation: drift 96s linear infinite;
+    }
+    .bg-cloud.c1 { top: 14%; left: -46%; width: 46%; animation-duration: 104s; }
+    .bg-cloud.c2 { top: 24%; left: -30%; width: 32%; height: 5vh;
+      background: rgba(255,255,255,0.55); animation-duration: 150s; animation-delay: -40s; }
+
+    .bg-hill {
+      position: absolute; left: -18%; width: 136%;
+      border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+    }
+    .bg-hill.h1 { bottom: 30%; height: 26vh; background: #A9C98F; opacity: 0.5; }
+    .bg-hill.h2 { bottom: 28%; left: -10%; width: 122%; height: 17vh;
+      background: linear-gradient(180deg, #8CBB77, #74A661); opacity: 0.85; }
+
+    .bg-fence {
+      position: absolute; left: 0; right: 0; bottom: 30%; height: 8vh; min-height: 44px;
+      background:
+        repeating-linear-gradient(90deg,
+          #C8A171 0 13px, rgba(0,0,0,0) 13px 25px);
+      -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 22%);
+      mask-image: linear-gradient(180deg, transparent 0, #000 22%);
+    }
+    .bg-fence::after {
+      content: ""; position: absolute; left: 0; right: 0; top: 34%;
+      height: 7px; border-radius: 3px;
+      background: linear-gradient(180deg, #D6B180, #B08A57);
+      box-shadow: 0 2px 4px rgba(61,46,32,0.28);
+    }
+
+    .bg-field {
+      position: absolute; left: -8%; right: -8%; bottom: 0; height: 27%;
+      background: linear-gradient(180deg, #9A7350 0%, #7C5A3F 42%, #5B3F2C 100%);
+    }
+    .bg-rows {
+      position: absolute; left: 6%; right: 6%; bottom: 7%; height: 17%;
+      border-radius: 14px / 42%;
+      background: repeating-linear-gradient(180deg,
+        #82603F 0 9px, #6B4A33 9px 20px);
+      box-shadow: inset 0 10px 20px rgba(61,46,32,0.30), 0 -3px 8px rgba(61,46,32,0.16);
+      transform: perspective(420px) rotateX(44deg);
+      transform-origin: 50% 100%;
+    }
+
+    .bg-plant {
+      position: absolute; font-size: clamp(20px, 6.4vw, 34px);
+      filter: drop-shadow(0 5px 5px rgba(61,46,32,0.30));
+      transform-origin: 50% 92%;
+      animation: sway 5.6s ease-in-out infinite;
+    }
+    .bg-plant.p1 { left: 8%;  bottom: 27%; animation-duration: 6.2s; }
+    .bg-plant.p2 { right: 11%; bottom: 28%; animation-duration: 5.1s; animation-delay: -1.4s; }
+    .bg-plant.p3 { left: 44%; bottom: 30%; font-size: clamp(16px, 5vw, 26px);
+      animation-duration: 7.1s; animation-delay: -2.6s; }
+
+    .mote {
+      position: absolute; width: 6px; height: 6px; border-radius: 50%;
+      background: rgba(255,250,226,0.92);
+      box-shadow: 0 0 9px rgba(255,238,170,0.85);
+      animation: moteFloat 13s ease-in-out infinite;
+    }
+    .mote.m1 { left: 12%; top: 62%; animation-duration: 12s; }
+    .mote.m2 { left: 27%; top: 74%; animation-duration: 15s; animation-delay: -3s; }
+    .mote.m3 { left: 41%; top: 58%; animation-duration: 11s; animation-delay: -6s; }
+    .mote.m4 { left: 58%; top: 70%; animation-duration: 16s; animation-delay: -2s; }
+    .mote.m5 { left: 72%; top: 60%; animation-duration: 13s; animation-delay: -8s; }
+    .mote.m6 { left: 86%; top: 76%; animation-duration: 14s; animation-delay: -5s; }
+    .mote.m7 { left: 34%; top: 86%; animation-duration: 17s; animation-delay: -10s; }
+    .mote.m8 { left: 66%; top: 88%; animation-duration: 12s; animation-delay: -7s; }
+
+    @keyframes sunGlow { 0%,100% { opacity: 0.9; } 50% { opacity: 1; } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes drift { to { transform: translateX(190%); } }
+    @keyframes sway { 0%,100% { transform: rotate(-3deg) translateY(0); }
+                      50% { transform: rotate(3deg) translateY(-3px); } }
+    @keyframes moteFloat {
+      0%   { transform: translate3d(0, 0, 0) scale(0.7); opacity: 0; }
+      15%  { opacity: 0.9; }
+      50%  { transform: translate3d(14px, -34px, 0) scale(1); opacity: 0.95; }
+      85%  { opacity: 0.5; }
+      100% { transform: translate3d(-8px, -74px, 0) scale(0.6); opacity: 0; }
+    }
+
+    /* --- контент поверх заставки --- */
+    .screen .container {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 440px;
+      margin: auto;
+      padding: max(24px, env(safe-area-inset-top)) 18px max(28px, env(safe-area-inset-bottom));
+      display: flex; flex-direction: column; align-items: center;
+    }
+
+    /* Вывеска: тёплое дерево, тёмная обводка, мягкая тень */
+    .sign {
+      position: relative; width: 100%; max-width: 360px;
+      padding: 20px 26px 18px; text-align: center;
+      border-radius: 22px; border: 3px solid #4A3020;
+      background:
+        linear-gradient(180deg, #B07C4E 0%, #96663F 42%, #7A4F31 100%);
+      box-shadow:
+        0 16px 30px rgba(61, 46, 32, 0.36),
+        inset 0 2px 0 rgba(255, 240, 210, 0.38),
+        inset 0 -8px 16px rgba(42, 26, 16, 0.30);
+      transform: rotate(-1.4deg);
+    }
+    .sign::before, .sign::after {
+      content: ""; position: absolute; top: 12px; width: 9px; height: 9px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #E8D5B0, #8A7454);
+      box-shadow: 0 1px 2px rgba(42, 26, 16, 0.5);
+    }
+    .sign::before { left: 14px; }
+    .sign::after { right: 14px; }
 
     .title {
       font-family: 'Lilita One', 'Nunito', cursive;
-      font-size: clamp(1.9rem, 6.4vw, 2.6rem);
-      color: var(--text-primary);
-      margin-bottom: 6px;
-      text-shadow: 0 2px 6px rgba(92, 69, 50, 0.18);
+      font-size: clamp(1.85rem, 8vw, 2.6rem);
+      line-height: 1.05;
+      color: #FFF6E0;
+      letter-spacing: 0.6px;
+      text-shadow:
+        0 2px 0 #4A3020, 0 -2px 0 #4A3020, 2px 0 0 #4A3020, -2px 0 0 #4A3020,
+        0 6px 12px rgba(0, 0, 0, 0.35);
     }
+
     .subtitle {
-      font-family: 'Nunito', sans-serif; font-size: 0.95rem;
-      color: var(--text-secondary); margin-bottom: 32px; font-weight: 500;
+      margin: 16px 0 18px; text-align: center;
+      padding: 7px 16px; border-radius: 999px;
+      font-family: 'Nunito', sans-serif;
+      font-size: 14.5px; font-weight: 800; line-height: 1.35;
+      color: #3D2E20;
+      background: rgba(255, 253, 248, 0.82);
+      border: 1px solid rgba(176, 138, 87, 0.45);
+      box-shadow: 0 4px 12px rgba(61, 46, 32, 0.14);
+      backdrop-filter: blur(4px);
+    }
+
+    .panel {
+      width: 100%; max-width: 400px; padding: 16px 14px;
+      border-radius: 26px; border: 3px solid #B08A57;
+      background: linear-gradient(180deg,
+        rgba(255, 253, 248, 0.97), rgba(249, 243, 233, 0.95));
+      box-shadow:
+        0 26px 52px rgba(61, 46, 32, 0.34),
+        0 4px 0 rgba(122, 79, 49, 0.35),
+        inset 0 2px 0 #FFFFFF,
+        inset 0 -10px 22px rgba(176, 138, 87, 0.10);
+      backdrop-filter: blur(7px);
     }
 
     .slots-container {
-      display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 380px;
-      margin-top: 4px;
+      display: flex; flex-direction: column; gap: 10px; width: 100%;
     }
 
     .slot {
-      background: var(--panel-bg-strong);
-      border: 2px solid var(--border-light); border-radius: var(--radius-md);
-      min-height: var(--touch-min);
-      padding: 20px; display: flex; justify-content: space-between; align-items: center;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      cursor: pointer; text-align: left; position: relative;
-      box-shadow: 0 4px 12px var(--shadow-soft);
+      position: relative;
+      display: flex; align-items: center; gap: 12px;
+      width: 100%; min-height: 64px; padding: 11px 14px;
+      border-radius: 18px; border: 2px solid var(--border-light);
+      background: linear-gradient(180deg, #FFFDF8, #F5EEE1);
+      box-shadow: 0 6px 14px rgba(92, 69, 50, 0.13), inset 0 1px 0 #FFFFFF;
+      cursor: pointer; text-align: left;
+      transition: transform 0.16s cubic-bezier(0.34, 1.4, 0.64, 1),
+                  box-shadow 0.16s, border-color 0.16s;
     }
-    .slot:hover {
-      border-color: var(--accent-leaf);
-      box-shadow: 0 8px 20px var(--shadow-card);
-      transform: translateY(-2px);
+    .slot:hover { border-color: var(--accent-leaf); box-shadow: 0 10px 22px rgba(92, 69, 50, 0.2); }
+    .slot:active { transform: scale(0.978) translateY(1px); }
+
+    .slot-icon {
+      flex: 0 0 auto; width: 44px; height: 44px; border-radius: 14px;
+      display: grid; place-items: center; font-size: 22px;
+      background: radial-gradient(circle at 35% 28%, #EDF5E7, #D3E5D3);
+      box-shadow: inset 0 -2px 5px rgba(61, 46, 32, 0.14);
     }
-    .slot:active { transform: scale(0.985); background: var(--bg-secondary); }
+    .slot-info { flex: 1 1 auto; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .slot-title {
+      font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 800;
+      color: var(--text-primary);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .slot-sub { font-size: 12.5px; font-weight: 600; color: #5C4532; }
+
+    .slot-cta {
+      flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%;
+      display: grid; place-items: center; font-size: 13px;
+      color: #FFF6E0; background: linear-gradient(180deg, #468A5D, #356444);
+      box-shadow: 0 4px 10px rgba(53, 100, 68, 0.35);
+    }
 
     .slot.empty {
-      border-style: dashed; background: var(--accent-leaf-light); border-color: var(--accent-leaf);
+      border-color: #B08A57;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0) 62%, rgba(122, 79, 49, 0.14) 100%),
+        linear-gradient(180deg, #F7FAF4, #E6F0E4);
     }
-    .slot.empty:hover { background: #CFE0D2; }
-
-    .slot-info { flex: 1; display: flex; flex-direction: column; gap: 5px; }
-    .slot-title { color: var(--text-primary); font-size: 16px; font-weight: 800; font-family: 'Nunito', sans-serif; }
-    .slot-sub { color: var(--text-secondary); font-size: 12px; font-weight: 500; }
+    .slot.empty::after {
+      content: ""; position: absolute; left: 12px; right: 12px; bottom: 7px; height: 5px;
+      border-radius: 3px;
+      background: repeating-linear-gradient(90deg,
+        rgba(122, 79, 49, 0.35) 0 7px, rgba(122, 79, 49, 0.12) 7px 15px);
+    }
+    .slot.empty .slot-icon {
+      background: radial-gradient(circle at 35% 28%, #FFFDF6, #E8E0CB);
+      color: var(--accent-leaf); font-weight: 900; font-size: 24px;
+    }
+    .slot.empty .slot-cta { background: linear-gradient(180deg, #E8C55A, #D2A93F); color: #3D2E20; }
 
     .slot-delete {
-      position: absolute; top: 8px; right: 8px; background: none;
-      color: var(--text-secondary); border: none; cursor: pointer;
-      font-size: 12px; font-weight: 700; transition: all 0.2s;
-      min-width: 44px; min-height: 44px; border-radius: var(--radius-sm);
+      position: absolute; top: 4px; right: 4px;
+      background: rgba(255, 253, 248, 0.85); border: none; cursor: pointer;
+      color: #5C4532; font-size: 12px; font-weight: 800;
+      min-width: 34px; min-height: 34px; border-radius: 12px;
       display: flex; align-items: center; justify-content: center;
+      transition: color 0.15s, background 0.15s;
     }
-    .slot-delete:hover { color: var(--accent-terracotta); background: rgba(194, 101, 74, 0.10); }
-    .slot-delete:focus-visible { outline: 3px solid var(--accent-wheat); outline-offset: 2px; }
+    .slot-delete:hover { color: var(--accent-terracotta); background: rgba(194, 101, 74, 0.14); }
 
-    .join-area {
-      margin-top: 32px; width: 100%; max-width: 380px;
-    }
+    .join-area { margin-top: 16px; width: 100%; display: flex; flex-direction: column; gap: 10px; }
+
+    .nick-input, .code-input, .btn-join { width: 100%; min-width: 0; }
+
     .nick-input {
-      width: 100%; min-width: 0; min-height: var(--touch-min);
-      padding: 16px 18px; font-size: 16px;
-      border: 2px solid var(--border-light); border-radius: var(--radius-md);
-      background: var(--panel-bg-strong); color: var(--text-primary); font-weight: 600;
-      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+      min-height: var(--touch-min); padding: 15px 18px;
+      font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 700;
+      color: var(--text-primary);
+      border: 2px solid var(--border-light); border-radius: 16px;
+      background: #FFFDF8; outline: none;
+      box-shadow: inset 0 2px 6px rgba(92, 69, 50, 0.08);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .nick-input::placeholder, .code-input::placeholder {
+      color: #5C4532; opacity: 0.85; font-weight: 700;
     }
     .nick-input:focus, .code-input:focus, .note-editor input[type="text"]:focus {
       border-color: var(--accent-leaf); box-shadow: 0 0 0 4px var(--focus-ring);
     }
-    .nick-input::placeholder { color: var(--text-secondary); font-size: 15px; }
-    .input-row {
-      display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;
-    }
 
     .code-input {
-      width: 100%; min-width: 0; min-height: var(--touch-min);
-      padding: 18px 20px; font-size: 20px; letter-spacing: 4px;
-      text-transform: uppercase; border: 2px solid var(--border-light);
-      border-radius: var(--radius-md); font-family: 'Nunito', monospace; outline: none;
-      background: var(--panel-bg-strong); color: var(--text-primary); font-weight: 800;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      min-height: var(--touch-min); padding: 16px 18px; text-align: center;
+      font-family: 'Nunito', monospace; font-size: 21px; font-weight: 800;
+      letter-spacing: 6px; text-transform: uppercase;
+      color: var(--text-primary);
+      border: 2px dashed #B08A57; border-radius: 16px;
+      background: #F4EADA;
+      box-shadow: inset 0 2px 6px rgba(92, 69, 50, 0.10);
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .code-input:focus { border-color: var(--accent-leaf); box-shadow: 0 0 0 4px var(--focus-ring); }
+    .code-input:focus { border-style: solid; border-color: var(--accent-leaf); box-shadow: 0 0 0 4px var(--focus-ring); }
 
-    /* Primary action: Forest green + 2px emboss («вдавленная доска») */
     .btn-join {
-      width: 100%; min-height: var(--touch-min); padding: 16px 22px; font-size: 18px;
+      min-height: 58px; padding: 16px 22px;
+      font-family: 'Lilita One', 'Nunito', cursive; font-size: 19px; letter-spacing: 0.6px;
+      color: #FFF6E0; cursor: pointer;
+      border: none; border-bottom: 4px solid var(--btn-primary-pressed); border-radius: 18px;
       background: linear-gradient(180deg, var(--btn-primary-start), var(--btn-primary-end));
-      color: var(--panel-bg-strong);
-      border: none;
-      border-bottom: 3px solid var(--btn-primary-pressed);
-      border-radius: var(--radius-md); cursor: pointer;
-      font-family: 'Lilita One', 'Nunito', cursive; letter-spacing: 0.4px;
-      box-shadow: 0 6px 14px var(--shadow-soft);
-      transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+      box-shadow: 0 10px 20px rgba(53, 100, 68, 0.28), inset 0 2px 0 rgba(255, 255, 255, 0.22);
+      transition: transform 0.14s cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 0.14s, filter 0.14s;
     }
+    .btn-join:hover { filter: brightness(1.05); box-shadow: 0 14px 26px rgba(53, 100, 68, 0.34); }
     .btn-join:active {
-      transform: translateY(2px);
-      background: var(--btn-primary-pressed);
-      border-bottom-width: 1px;
-      box-shadow: 0 2px 6px var(--shadow-soft);
+      transform: translateY(3px); border-bottom-width: 1px;
+      box-shadow: 0 4px 10px rgba(53, 100, 68, 0.3);
     }
-    .btn-join:hover { filter: brightness(1.05); box-shadow: 0 10px 22px var(--shadow-card); }
 
     .btn-join:focus-visible, .slot:focus-visible, .slot-delete:focus-visible, .note-btn:focus-visible {
       outline: 3px solid var(--accent-wheat); outline-offset: 3px;
     }
 
     .error {
-      color: var(--accent-terracotta); font-size: 13px; margin-top: 6px; min-height: 20px;
-      font-weight: 700; margin-bottom: 4px;
+      margin: 2px 2px 0; min-height: 20px;
+      font-family: 'Nunito', sans-serif; font-size: 13.5px; font-weight: 800;
+      color: #A8432A;
+    }
+
+    .menu-hint {
+      margin-top: 14px; max-width: 372px; text-align: center;
+      padding: 8px 14px; border-radius: 14px;
+      font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700;
+      line-height: 1.4; color: #3D2E20;
+      background: rgba(255, 253, 248, 0.84);
+      border: 1px solid rgba(176, 138, 87, 0.4);
+      box-shadow: 0 4px 12px rgba(61, 46, 32, 0.12);
+    }
+    .menu-hint b { color: #2F5C3C; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .menu-bg *, .bg-sun::after { animation: none !important; }
     }
 
     .note-editor {
@@ -286,23 +484,46 @@
   <div id="game-container"></div>
 
   <div class="screen" id="menuScreen">
-    <div class="container">
-      <div class="title">Quiet Garden</div>
-      <div class="subtitle">Выберите сад или создайте новый</div>
+    <div class="menu-bg" aria-hidden="true">
+      <div class="bg-sun"></div>
+      <div class="bg-cloud c1"></div>
+      <div class="bg-cloud c2"></div>
+      <div class="bg-hill h1"></div>
+      <div class="bg-hill h2"></div>
+      <div class="bg-fence"></div>
+      <div class="bg-field">
+        <div class="bg-rows"></div>
+      </div>
+      <div class="bg-plant p1">🌿</div>
+      <div class="bg-plant p2">🌷</div>
+      <div class="bg-plant p3">🍄</div>
+      <div class="mote m1"></div><div class="mote m2"></div>
+      <div class="mote m3"></div><div class="mote m4"></div>
+      <div class="mote m5"></div><div class="mote m6"></div>
+      <div class="mote m7"></div><div class="mote m8"></div>
+    </div>
 
-      <div class="slots-container" id="slotsContainer">
-        <!-- Слоты будут сгенерированы через JS -->
+    <div class="container">
+      <div class="sign">
+        <div class="title">Quiet Garden</div>
+      </div>
+      <div class="subtitle">Тихий сад для двоих — сажайте, поливайте, собирайте вместе</div>
+
+      <div class="panel">
+        <div class="slots-container" id="slotsContainer">
+          <!-- Слоты садов и «Новый сад» рисует src/main.js -->
+        </div>
+
+        <div class="join-area">
+          <input class="nick-input" id="nickInput" type="text" maxlength="20" placeholder="Ваше имя" autocomplete="off" />
+          <button class="btn-join" id="joinBtn">Войти в сад</button>
+          <input class="code-input" id="codeInput" type="text" maxlength="6" placeholder="КОД ДРУГА" autocomplete="off" />
+          <div class="error" id="joinError"></div>
+        </div>
       </div>
 
-      <div class="join-area">
-        <div style="margin-bottom: 16px;">
-          <input class="nick-input" id="nickInput" type="text" maxlength="20" placeholder="Ваше имя" autocomplete="off" />
-        </div>
-        <div class="input-row">
-          <button class="btn-join" id="joinBtn">Войти</button>
-          <input class="code-input" id="codeInput" type="text" maxlength="6" placeholder="КОД ДРУГА" autocomplete="off" />
-        </div>
-        <div class="error" id="joinError"></div>
+      <div class="menu-hint">
+        Создайте сад, скопируйте код и отправьте его близкому — <b>сад растёт быстрее вдвоём</b>.
       </div>
     </div>
   </div>

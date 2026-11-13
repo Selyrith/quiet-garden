@@ -35,24 +35,32 @@ export function drawGrassTufts(scene, cx, cy, tileSize, seed) {
     g.fillRect(px, py - h + 1, 1, h - 1);
   }
 
-  // Ветер: мягкое покачивание травы по синусу
-  g._windPhase = Math.random() * Math.PI * 2;
-  g._windSpeed = 0.5 + Math.random() * 0.5;
-  g._windAmp = 2 + Math.random() * 3;
+  // Ветер: фаза общая для всего сада (не своя у каждой травинки) — тогда
+  // это читается как порыв, а не как случайный шум. Лёгкий разброс фазы
+  // по координате тайла сохраняет естественность.
+  g._windPhase = (seed * 0.37) % (Math.PI * 2);
+  g._windAmp = 1.4 + (seed % 7) * 0.22;
 
   return g;
 }
 
 /**
  * Обновляет покачивание травы на ветру (вызывать из update цикла).
+ *
+ * Ветер — медленная огибающая (порывы) поверх общего синуса:
+ *   gust = 0.55 + 0.45 * sin(t * 0.31)   — сила порыва
+ *   sway = sin(t * 1.4 + phase) * amp * gust
+ * Перед старой версией: у каждой травинки была своя случайная скорость,
+ * и сад «шумел», а не «дышал».
  */
 export function updateGrassWind(scene, tiles, delta) {
-  const time = scene.time.now / 1000;
+  const t = scene.time.now / 1000;
+  const gust = 0.55 + 0.45 * Math.sin(t * 0.31);
   for (const [, tile] of tiles) {
     const g = tile.grassGfx;
     if (!g) continue;
-    const sway = Math.sin(time * g._windSpeed + g._windPhase) * g._windAmp;
-    g.x = tile.rect.x + sway;
+    const sway = Math.sin(t * 1.4 + g._windPhase) * g._windAmp * gust;
+    g.x = sway;
   }
 }
 

@@ -4,14 +4,28 @@
 - Source: [Kenney.nl asset pack](https://kenney.nl/assets/tiny-farm)
 - License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)
 - The original `License.txt` is kept in `tiny-farm/`.
-- Used here only for the pet-egg icon; the farm crops and livestock are not mapped onto Quiet Garden's fantasy plants or pets.
+- Used here only for the pet-egg icon (`tile_0125.png`); the farm crops and livestock are not mapped onto Quiet Garden's fantasy plants or pets.
 
-## LPC Flowers / Plants / Fungi / Wood
-- Source: [OpenGameArt — LPC Flowers / Plants / Fungi / Wood](https://opengameart.org/content/lpc-flowers-plants-fungi-wood)
-- Credits: bluecarrot16, Guido Bos, Ivan Voirol (Silver IV), SpiderDave, William.Thompsonj, Yar, Stephen Challener and the Open Surge team, Gaurav Munjal, Johann Charlot, Casper Nilsson, Jetrel, Zabin, Hyptosis, Surt, Lanea Zimmerman, George Bailey, ansimuz, Buch, and Open Pixel Project contributors.
-- License: [CC-BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/).
-- The full source attribution text is preserved in `magic-garden/LPC-CREDITS.txt`; the source sheet and the selected transparent water-lily crop are kept alongside it.
+## Растительный мир и декор Quiet Garden — процедурные
 
-## Magic garden sprite sheet supplied by the user
-- Source: `design/file_000000009b1481f48e59edc23b7bbed2.png` (provided by the user; selected objects were cropped for in-game use).
-- Author and license were not supplied. No license or authorship is claimed here. These crops are retained only as local project assets; verify redistribution rights before publishing or sharing a build/repository containing them.
+Всё остальное в игре рисуется кодом, а не берётся из внешних паков:
+
+| Что | Где |
+|---|---|
+| 300 текстур растений | `src/ui/PlantTextureFactory.js` + `src/ui/PixelArt.js` |
+| Почва грядки (4 варианта) | `src/ui/SoilTexture.js` |
+| Рамка сада и дорожки | `src/ui/GardenFrame.js` |
+| Пруд, фонари, скамейка, кустики, ореолы света | `src/ui/GardenDecor.js` |
+| Небо, холмы, солнце, луна, звёзды, облака | `src/ui/Background.js` |
+| Частицы погоды и сезонов | `src/ui/WeatherEffects.js`, `src/ui/AmbientEffects.js` |
+
+Причина: единый code-drawn стиль важнее «фотографичности», а у сторонних
+наборов спрайтов разные масштаб, палитра и лицензии. Обоснование и
+техники — в `design/reference/web/`.
+
+## Удалено
+
+Ранее в `public/assets/sprites/magic-garden/` лежали нарезки из листа,
+предоставленного пользователем, и LPC-растения. Они удалены: стиль не совпадал
+с процедурной графикой, а лицензия на пользовательский лист не была указана.
+Если лист понадобится снова — сначала фиксируем автора и лицензию, потом кладём.

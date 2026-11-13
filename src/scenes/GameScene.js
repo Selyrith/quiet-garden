@@ -5,12 +5,15 @@ import { GameSceneUi } from './GameSceneUi.js';
 import { ActivityLayer } from '../ui/ActivityLayer.js';
 import { sound } from '../audio/SoundManager.js';
 import { AmbienceManager } from '../audio/AmbienceManager.js';
-import { drawBackground, updateSky } from '../ui/Background.js';
+import { drawBackground, updateSky, resizeBackground } from '../ui/Background.js';
 import { createWorldTint, applyWorldTint, worldIconsString } from '../ui/WorldTint.js';
 import { createVignette } from '../ui/Vignette.js';
 import { WeatherEffects } from '../ui/WeatherEffects.js';
 import { AmbientEffects } from '../ui/AmbientEffects.js';
 import { drawGrassTufts, createWetOverlay, updateGrassWind } from '../ui/TileDecor.js';
+import { createGardenDecor, updateGardenLights } from '../ui/GardenDecor.js';
+import { bakeSoilVariants, soilKeyFor } from '../ui/SoilTexture.js';
+import { bakeGardenFrame, computeDecorBands, GARDEN_FRAME_SHADOW } from '../ui/GardenFrame.js';
 import { createTopBar } from '../ui/HudTopBar.js';
 import { createTeamGoalBar } from '../ui/HudTeamBar.js';
 import { createEmotesBar } from '../ui/HudEmotesBar.js';
@@ -19,6 +22,8 @@ import { computeLayout, rowCenters } from '../ui/Layout.js';
 import { createAvatar, tintAvatar, updateAvatarLabel } from '../ui/PlayerAvatar.js';
 import { avatarStandPosition } from '../ui/avatar-layout.js';
 import { generateAllPlantTextures } from '../ui/PlantTextureFactory.js';
+import { bakeIcons, ICON } from '../ui/Icons.js';
+import { bakeAuraTextures, createPlantAura } from '../ui/PlantAura.js';
 import { escapeHtml } from '../ui/escapeHtml.js';
 import { DS, drawRoundedRect, drawShadowedRect } from '../ui/DesignSystem.js';
 import { createUnifiedButton } from '../ui/ui-unified.js';
@@ -29,35 +34,10 @@ import { StressMetrics } from '../telemetry/StressMetrics.js';
 
 const GRID = 8;
 
-// Спрайты магического сада: отдельные прозрачные crops из листа, не единая
-// гигантская текстура. Исходные 300 procedural plant textures остаются основой.
-const GARDEN_SPRITES = {
-  starVine: 'star_vine.png', moonTree: 'moon_tree.png', glowingLotus: 'glowing_lotus.png',
-  pinkLotus: 'pink_lotus.png', autumnFlower: 'autumn_flower.png', blueFlower: 'blue_flower.png',
-  pinkFlower: 'pink_flower.png', branchingFlower: 'branching_flower.png', flowerSpray: 'flower_spray.png',
-  whiteDaisy: 'white_daisy.png', violetBloom: 'violet_bloom.png', pinkBloom: 'pink_bloom.png',
-  flowerCluster: 'flower_cluster.png', stonePortal: 'stone_portal.png', redMushroom: 'red_mushroom.png',
-  violetMushroom: 'violet_mushroom.png', blueMushroom: 'blue_mushroom.png', purpleMushroom: 'purple_mushroom.png',
-  violetShrub: 'violet_shrub.png', spottedMushroom: 'spotted_mushroom.png', sageMushroom: 'sage_mushroom.png',
-  purpleFlowerShrub: 'purple_flower_shrub.png', crystalSprig: 'crystal_sprig.png', crystalLotus: 'crystal_lotus.png',
-  flowerArch: 'flower_arch.png', violetFlowerCluster: 'violet_flower_cluster.png', starMushroom: 'star_mushroom.png',
-  forestHerb: 'forest_herb.png', flowerCloche: 'flower_cloche.png', crystalOrb: 'crystal_orb.png',
-  crystalCluster: 'crystal_cluster.png', candleCluster: 'candle_cluster.png', gardenStone: 'garden_stone.png',
-  birdhouse: 'birdhouse.png', raven: 'raven.png', wateringCan: 'watering_can.png', basket: 'basket.png',
-  lantern: 'lantern.png', treasureChest: 'treasure_chest.png', woodSign: 'wood_sign.png', directionSign: 'direction_sign.png',
-  birdBath: 'bird_bath.png', woodFence: 'wood_fence.png', stoneBench: 'stone_bench.png',
-  stoneFountain: 'stone_fountain.png', flowerPatch: 'flower_patch.png', steppingStones: 'stepping_stones.png',
-  mossyRock: 'mossy_rock.png', snailStump: 'snail_stump.png', lpcLilyCluster: 'lpc_lily_cluster.png'
-};
-
-// Небольшие декоративные растения появляются только на части пустых клеток;
-// их положение детерминировано и они скрываются при посадке.
-const TILE_DECOR_KEYS = [
-  'whiteDaisy', 'violetBloom', 'pinkBloom', 'flowerCluster', 'redMushroom',
-  'violetMushroom', 'blueMushroom', 'purpleMushroom', 'spottedMushroom',
-  'sageMushroom', 'crystalCluster', 'forestHerb', 'flowerPatch', 'flowerSpray',
-  'crystalLotus', 'pinkLotus', 'violetShrub', 'lpcLilyCluster'
-];
+// Растения рисуются процедурно (PlantTextureFactory + PixelArt): единый
+// code-drawn стиль, никаких растровых спрайтов из внешних паков.
+// Атмосферные объекты сада (пруд, скамейка, фонари, тропинки) — тоже процедурные,
+// см. createGardenDecor и design/reference/web/TECHNIQUES.md.
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -147,9 +127,6 @@ export default class GameScene extends Phaser.Scene {
     this.load.image('avatar-male', '/assets/images/avatar-male.svg');
     this.load.image('avatar-female', '/assets/images/avatar-female.svg');
     this.load.image('sprite_pet_egg', '/assets/sprites/tiny-farm/tile_0125.png');
-    for (const [key, file] of Object.entries(GARDEN_SPRITES)) {
-      this.load.image(`garden_${key}`, `/assets/sprites/magic-garden/${file}`);
-    }
   }
 
   async create() {
@@ -180,6 +157,10 @@ export default class GameScene extends Phaser.Scene {
     // Генерация всех текстур растений (300 текстур) - производительность!
     // ДОЛЖНО БЫТЬ В САМОМ НАЧАЛЕ, до drawGrid() и createTile()
     generateAllPlantTextures(this);
+    // Нарисованные иконки интерфейса (вместо эмодзи) — один раз на сцену.
+    bakeIcons(this);
+    // Ореол и искры магических растений (редкие и выше светятся).
+    bakeAuraTextures(this);
 
     // Создаем текстуру 'spark_particle' для партикл эмиттера
     if (!this.textures.exists('spark_particle')) {
@@ -191,6 +172,8 @@ export default class GameScene extends Phaser.Scene {
     }
 
     this.bg = drawBackground(this);
+    // Запекаем 4 варианта почвы один раз на сцену (см. src/ui/SoilTexture.js).
+    bakeSoilVariants(this);
     this.worldTint = createWorldTint(this);
     this.vignette = createVignette(this);
 
@@ -255,13 +238,17 @@ export default class GameScene extends Phaser.Scene {
     // Всплывающие уведомления (под teamBar)
     this.toastText = this.add.text(this.layout.w / 2, this.layout.toastY, '', {
       fontSize: `${DS.font.size.sm}px`,
-      color: DS.colors.brand.gold,
+      color: '#FFF6E0',
       fontFamily: DS.font.family.base,
       fontWeight: DS.font.weight.bold,
-      backgroundColor: `${DS.colors.overlay.heavy}`,
-      padding: { x: DS.spacing.md, y: DS.spacing.xs },
-      wordWrap: { width: Math.min(this.scale.width - 40, 400) },
-      align: 'center'
+      // Плашка-«пергамент» с золотой каймой вместо серого полупрозрачного
+      // прямоугольника: тот читался как системное уведомление, а не как игра.
+      backgroundColor: 'rgba(61,46,32,0.92)',
+      padding: { x: DS.spacing.md + 2, y: DS.spacing.sm },
+      wordWrap: { width: Math.min(this.scale.width - 56, 380), useAdvancedWrap: true },
+      align: 'center',
+      stroke: '#2C1B10',
+      strokeThickness: 2
     }).setOrigin(0.5).setDepth(DS.depth.toasts).setAlpha(0);
 
     // Список игроков (левый верхний угол, под HUD)
@@ -389,19 +376,29 @@ export default class GameScene extends Phaser.Scene {
 
     this.gridOrigin = { x: offsetX, y: offsetY, size: totalSize };
 
-    // Деревянная рамка вокруг всего сада + дорожки между грядками (cozy frame)
-    this.savedFrameRect = this.add.rectangle(offsetX + totalSize / 2, offsetY + totalSize / 2, totalSize + 16, totalSize + 16, 0x3e2723)
-      .setStrokeStyle(4, 0x8d6e63)
-      .setDepth(0);
-    if (!this.gardenPaths) this.gardenPaths = this.add.graphics().setDepth(0);
-    this.gardenPaths.clear();
-    this.gardenPaths.lineStyle(2, 0xe8c55a, 0.28);
-    this.gardenPaths.strokeRoundedRect(offsetX - 3, offsetY - 3, totalSize + 6, totalSize + 6, 10);
-    this.gardenPaths.lineStyle(1, 0x8d6e63, 0.18);
-    for (let i = 1; i < GRID; i++) {
-      this.gardenPaths.lineBetween(offsetX + i * this.tileSize, offsetY + 2, offsetX + i * this.tileSize, offsetY + totalSize - 2);
-      this.gardenPaths.lineBetween(offsetX + 2, offsetY + i * this.tileSize, offsetX + totalSize - 2, offsetY + i * this.tileSize);
-    }
+    // Платформа сада (рамка + дорожки + полосы под декор) — одна текстура.
+    // Ширины полос считаются из свободного места, см. src/ui/GardenFrame.js.
+    this.decorBands = computeDecorBands(this.layout);
+    const frame = bakeGardenFrame(this, totalSize, this.decorBands);
+    // Позиция текстуры относительно сетки.
+    //
+    // Внутри текстуры сетка начинается на `shadow` пикселей от края, а слева
+    // и справа от неё лежат РАВНЫЕ полосы декора (side). Значит центр
+    // изображения должен совпадать с центром сетки: offsetX + totalSize / 2.
+    //
+    // БЫЛО: `(totalSize + side) / 2` — рамка уезжала вправо на side/2, и
+    // грядки визуально стояли левее декора (забор/скамейка «съезжали»).
+    const shadow = GARDEN_FRAME_SHADOW;
+    const frameCx = offsetX + totalSize / 2;
+    const frameCy = offsetY + (totalSize + this.decorBands.bottom) / 2;
+    this.savedFrameRect = this.add.image(frameCx, frameCy, frame.key)
+      .setDisplaySize(frame.totalW, frame.totalH)
+      .setDepth(DS.depth.garden);
+    this.gardenPaths = this.savedFrameRect;
+    // Параметры запечённой рамки — для пересборки на ресайзе.
+    this.gardenFrameKey = frame.key;
+    this.gardenFrameSize = totalSize;
+    this.gardenFrameShadow = shadow;
 
     for (let y = 0; y < GRID; y++) {
       for (let x = 0; x < GRID; x++) {
@@ -419,22 +416,11 @@ export default class GameScene extends Phaser.Scene {
     // в локальных координатах (центр = 0,0).
     const tileContainer = this.add.container(cx + size / 2, cy + size / 2).setDepth(1);
 
-    // Текстура земли — рисуется в локальных координатах относительно центра.
-    const dirt = this.add.graphics();
-    // Лёгкая тёмная эллипса — тень на земле, придаёт объём.
-    dirt.fillStyle(0x2c1b10, 0.4);
-    dirt.fillEllipse(0, 4, size - 6, size - 14);
-    // Основной слой земли.
-    dirt.fillStyle(0x4a2f1f, 1);
-    dirt.fillRoundedRect(-size / 2 + 2, -size / 2 + 2, size - 4, size - 4, 8);
-    // Бороздки — детализация поверхности.
-    dirt.lineStyle(1.5, 0x2f1c14, 0.5);
-    dirt.lineBetween(-size / 3, -size / 4, size / 3, -size / 4);
-    dirt.lineBetween(-size / 3, 0, size / 3, 0);
-    dirt.lineBetween(-size / 3, size / 4, size / 3, size / 4);
-    // Обводка земли.
-    dirt.lineStyle(2, 0x2f1c14, 0.8);
-    dirt.strokeRoundedRect(-size / 2 + 2, -size / 2 + 2, size - 4, size - 4, 8);
+    // Текстура земли — запечена один раз в 4 варианта (см. src/ui/SoilTexture.js).
+    // Объём (свет сверху-слева, тень снизу-справа, борозды) уже в текстуре,
+    // поэтому в сцене нет ни одной Graphics-команды на грядку.
+    const dirt = this.add.image(0, 0, soilKeyFor(x, y))
+      .setDisplaySize(size, size);
     tileContainer.add(dirt);
 
     // Прозрачная зона клика поверх земли — обрабатывает клик по грядке.
@@ -454,13 +440,6 @@ export default class GameScene extends Phaser.Scene {
     wetOverlay.setDepth(3);
     wetOverlay.setVisible(false);
     tileContainer.add(wetOverlay);
-
-    // Декоративный элемент на пустой грядке — появляется только пока ничего не посажено.
-    // Выбор детерминирован по координатам: одинаковая клетка всегда показывает один и тот же спрайт.
-    const decorKey = TILE_DECOR_KEYS[(x * 31 + y * 17) % TILE_DECOR_KEYS.length];
-    const decorSprite = this.add.image(0, 0, `garden_${decorKey}`)
-      .setOrigin(0.5).setDepth(4).setVisible(true);
-    tileContainer.add(decorSprite);
 
     // Тонкая рамка-обводка в world-координатах: именно её цвет меняется
     // через setStrokeStyle (подсветка ожидания действия, цвет растения и т.п.).
@@ -485,8 +464,12 @@ export default class GameScene extends Phaser.Scene {
     const shadowImage = this.add.ellipse(cx + size / 2, cy + size / 2 + size * 0.35, size * 0.65, size * 0.25, 0x000000, 0.3)
       .setDepth(7).setVisible(false);
 
+    // Магический ореол: под растением, поверх земли.
+    const aura = createPlantAura(this, cx + size / 2, cy + size / 2 + size * 0.35, size);
+
     this.tiles.set(key, {
       container: tileContainer,
+      aura,
       dirt,
       rect,
       grassGfx,
@@ -496,7 +479,6 @@ export default class GameScene extends Phaser.Scene {
       bar,
       plantImage,
       shadowImage,
-      decorSprite,
       stage: -1,
       progress: 0,
       seed: null,
@@ -516,9 +498,11 @@ export default class GameScene extends Phaser.Scene {
     const S = this.layout.side;
     const x = S.emoteX ?? S.x;
     const y = S.emoteY;
-    this.emoteBtn = this.add.text(x, y, '😊', {
-      fontSize: '28px'
-    }).setOrigin(0.5).setDepth(150).setInteractive({ useHandCursor: true });
+    // Нарисованная иконка-«облачко» вместо эмодзи: одинаково на всех ОС.
+    this.emoteBtn = this.add.image(x, y, ICON.emote)
+      .setDisplaySize(32, 32)
+      .setDepth(150)
+      .setInteractive({ useHandCursor: true });
     const btn = this.emoteBtn;
 
     btn.on('pointerdown', () => {
@@ -537,9 +521,10 @@ export default class GameScene extends Phaser.Scene {
 
   createWatchButton() {
     const S = this.layout.side;
-    this.watchBtn = this.add.text(S.watchX ?? S.x, S.watchY, '👁️', {
-      fontSize: '28px'
-    }).setOrigin(0.5).setDepth(150).setInteractive({ useHandCursor: true });
+    this.watchBtn = this.add.image(S.watchX ?? S.x, S.watchY, ICON.eye)
+      .setDisplaySize(32, 32)
+      .setDepth(150)
+      .setInteractive({ useHandCursor: true });
 
     const btn = this.watchBtn;
 
@@ -1005,10 +990,21 @@ export default class GameScene extends Phaser.Scene {
   updateCoins(coins) {
     this.coins = coins;
     if (this.topBar && this.topBar.coins) {
-      this.topBar.coins.setText(`🪙 ${coins}`);
+      const text = this.topBar.coins;
+      text.setText(String(coins));
+      // Длинное число (миллионы) раньше вылезало за чип — подгоняем кегль.
+      let size = 17;
+      text.setFontSize(size);
+      while (text.width > 56 && size > 9) {
+        size -= 1;
+        text.setFontSize(size);
+      }
     }
     if (this.upgradesOverlay && typeof this.upgradesOverlay.update === 'function') {
       this.upgradesOverlay.update(coins, this.upgrades);
+    }
+    if (this.shopOverlay && typeof this.shopOverlay.updateCoins === 'function') {
+      this.shopOverlay.updateCoins(coins);
     }
   }
 
@@ -1034,6 +1030,8 @@ export default class GameScene extends Phaser.Scene {
     applyWorldTint(this, this.worldTint, world);
     if (this.weather && this.weather.update) this.weather.update(world);
     if (this.ambience && this.ambience.update) this.ambience.update(world);
+    // Фонари зажигаются вечером и ночью (аддитивные ореолы, без шейдеров).
+    updateGardenLights(this, world.phase?.id || 'day');
     // Реверб-зона по фазе мира
     if (this.sound) {
       const phase = world.phase?.id || 'day';
@@ -1046,66 +1044,14 @@ export default class GameScene extends Phaser.Scene {
   }
 
   createGardenDecor() {
-    // Уютный декор сада: пруд, фонарики, скамейка, забор — спрайты из
-    // листа «магический сад» (предоставлен пользователем) вместо векторов.
-    const totalSize = this.tileSize * GRID;
-    const offsetX = (this.scale.width - totalSize) / 2;
-    const offsetY = (this.scale.height - totalSize) / 2 - 10;
-
-    this.gardenDecor = [];
-
-    // Пруд в углу сада — фонтан/камни с водой (магический сад).
-    const pondX = offsetX + totalSize * 0.88;
-    const pondY = offsetY + totalSize * 0.86;
-    const pondW = totalSize * 0.22;
-    const pondH = totalSize * 0.16;
-    const pond = this.add.image(pondX, pondY, 'garden_stone_fountain')
-      .setOrigin(0.5).setDepth(-5).setScrollFactor(0);
-    pond.setDisplaySize(pondW, pondH);
-    this.gardenDecor.push(pond);
-
-    // Фонарики по периметру сада (внутри границ).
-    const lanterns = [
-      [offsetX + totalSize * 0.06, offsetY + totalSize * 0.11],
-      [offsetX + totalSize * 0.94, offsetY + totalSize * 0.15],
-      [offsetX + totalSize * 0.07, offsetY + totalSize * 0.9],
-      [offsetX + totalSize * 0.92, offsetY + totalSize * 0.85]
-    ];
-    for (const [lx, ly] of lanterns) {
-      const lantern = this.add.image(lx, ly, 'garden_lantern')
-        .setOrigin(0.5).setDepth(-5).setScrollFactor(0);
-      lantern.setDisplaySize(22, 26);
-      this.gardenDecor.push(lantern);
-    }
-
-    // Скамейка у пруда (внутри сада).
-    const bx = pondX - totalSize * 0.08, by = pondY - totalSize * 0.1;
-    const bench = this.add.image(bx, by, 'garden_stone_bench')
-      .setOrigin(0.5).setDepth(-5).setScrollFactor(0);
-    bench.setDisplaySize(40, 16);
-    this.gardenDecor.push(bench);
-
-    // Лёгкий деревянный забор по краям сада (детерминированные позиции).
-    for (let i = 0; i <= GRID; i++) {
-      const fx = offsetX + i * this.tileSize;
-      for (const [fy, flipY] of [[offsetY - 5, false], [offsetY + totalSize, false]]) {
-        const post = this.add.image(fx, fy, 'garden_wood_fence')
-          .setOrigin(0.5).setDepth(-5).setScrollFactor(0);
-        post.setDisplaySize(6, 10);
-        post.setFlipY(flipY);
-        this.gardenDecor.push(post);
+    // Уютный декор сада: пруд, фонарики, скамейка, кустики у кромки.
+    // Процедурные текстуры, запечённые один раз — см. src/ui/GardenDecor.js.
+    if (this.gardenDecor) {
+      for (const obj of this.gardenDecor) {
+        try { obj.destroy(); } catch {}
       }
     }
-    for (let i = 0; i <= GRID; i++) {
-      const fy = offsetY + i * this.tileSize;
-      for (const [fx, flipX] of [[offsetX - 5, false], [offsetX + totalSize, false]]) {
-        const post = this.add.image(fx, fy, 'garden_wood_fence')
-          .setOrigin(0.5).setDepth(-5).setScrollFactor(0);
-        post.setDisplaySize(10, 6);
-        post.setFlipX(flipX);
-        this.gardenDecor.push(post);
-      }
-    }
+    this.gardenDecor = createGardenDecor(this, this.layout, this.decorBands);
   }
 
   showEmote(playerId, emote) {
@@ -1154,12 +1100,33 @@ export default class GameScene extends Phaser.Scene {
         if (tile.bar) tile.bar.setPosition(cx - (this.tileSize - 12) / 2, offsetY + y * this.tileSize + this.tileSize - 8);
         if (tile.plantImage) tile.plantImage.setPosition(cx, cy + this.tileSize * 0.35);
         if (tile.shadowImage) tile.shadowImage.setPosition(cx, cy + this.tileSize * 0.35);
+        if (tile.aura) tile.aura.setPosition(cx, cy + this.tileSize * 0.35);
         if (tile.readyBadge) tile.readyBadge.setPosition(cx, cy - 30);
       }
     }
-    // Внешняя рамка сада
+    // Платформа сада: пересобираем под новый размер сетки и ширины полос.
     if (this.savedFrameRect) {
-      this.savedFrameRect.setPosition(offsetX + totalSize / 2, offsetY + totalSize / 2);
+      this.decorBands = computeDecorBands(this.layout);
+      const side = this.decorBands.side;
+      const bottom = this.decorBands.bottom;
+      // Та же формула, что в drawGrid: центр картинки = центр сетки по X
+      // (боковые полосы равные), снизу добавляется полоса декора.
+      const frameCx = offsetX + totalSize / 2;
+      const frameCy = offsetY + (totalSize + bottom) / 2;
+      this.savedFrameRect.setPosition(frameCx, frameCy);
+
+      const frame = bakeGardenFrame(this, totalSize, this.decorBands);
+      if (this.gardenFrameKey !== frame.key) {
+        const oldKey = this.gardenFrameKey;
+        this.savedFrameRect.setTexture(frame.key);
+        this.gardenFrameKey = frame.key;
+        // Старую рамку не держим: на каждый размер экрана своя текстура.
+        if (oldKey && oldKey !== frame.key && this.textures.exists(oldKey)) {
+          this.textures.remove(oldKey);
+        }
+      }
+      this.savedFrameRect.setDisplaySize(frame.totalW, frame.totalH);
+      this.gardenFrameSize = totalSize;
     }
   }
 
@@ -1174,6 +1141,10 @@ export default class GameScene extends Phaser.Scene {
 
     this.tileSize = L.grid.tileSize;
     this.rebuildGridLayout();
+    // Декор привязан к рамке сада — пересобираем после пересчёта сетки.
+    this.createGardenDecor();
+    // Фон запечён под размер экрана — пересобираем текстуры под новые размеры.
+    if (this.bg) resizeBackground(this.bg);
 
     if (this.hintText) this.hintText.setPosition(w / 2, L.hintY);
     if (this.toastText) {

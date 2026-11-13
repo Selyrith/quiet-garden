@@ -103,9 +103,18 @@ export function answerPetQuestion(room, playerId, answerText) {
 
   room.pet.answers.set(playerId, { day: today, answerText, answeredAt: Date.now() });
 
-  // Проверяем, ответили оба
+  // Проверяем, ответили оба.
+  //
+  // БЫЛО: `answers.size` считал и тех, кто уже ушёл из сада (ответы хранятся,
+  // чтобы игрок видел свой ответ после перезахода), а `playerCount` — только
+  // живых. День мог «засчитаться» чужим старым ответом или, наоборот, не
+  // засчитаться, когда партнёр офлайн. Теперь считаем ответы только
+  // присутствующих игроков.
   const playerCount = room.players.size;
-  const answeredToday = room.pet.answers.size;
+  let answeredToday = 0;
+  for (const [id, ans] of room.pet.answers) {
+    if (ans && ans.day === today && room.players.has(id)) answeredToday++;
+  }
   if (answeredToday >= playerCount && playerCount >= 2) {
     // Оба ответили — засчитываем день
     room.pet.daysAnswered += 1;

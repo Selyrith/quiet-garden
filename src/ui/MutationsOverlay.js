@@ -1,17 +1,24 @@
 import Phaser from 'phaser';
 import { getPlant } from '../../shared/plants.js';
 import { MUTATION_COUNT, getMutation } from '../../shared/mutations.js';
-import { drawPixelPlant } from './PixelArt.js';
-import { UNIFIED } from './ui-unified.js';
+import { drawPixelPlant, drawOutlinedPlant } from './PixelArt.js';
 import { DS } from './DesignSystem.js';
-import { MOBILE } from './MobileScale.js';
-import { UI, drawPanel } from './ui-theme.js';
+import {
+  openOverlay,
+  createEmptyState,
+  color,
+} from './ui-kit.js';
 
-const MUT_PER_PAGE = 20;
-
+/**
+ * Мутации растения — «коллекционный альбом образцов».
+ *
+ * Было: тёмные квадраты 0x1c2833 на пергаментной панели (выглядело как
+ * техническая сетка), подписи «Стр. 1 / 5» без стрелок-подсказок и
+ * перекрывающиеся клики. Стало: плитки-образцы в бумажной палитре,
+ * открытые светятся золотом, закрытые — с силуэтом «?».
+ */
 export class MutationsOverlay extends Phaser.GameObjects.Container {
   constructor(scene, plantSeed, collection) {
-    const cam = scene.cameras.main;
     super(scene, 0, 0);
     scene.add.existing(this);
     this.setDepth(DS.overlay.detail);
@@ -19,130 +26,198 @@ export class MutationsOverlay extends Phaser.GameObjects.Container {
     this.plantSeed = plantSeed;
     this.collection = collection;
     this.page = 0;
-    this.totalPages = Math.ceil(MUTATION_COUNT / MUT_PER_PAGE);
-
-    scene.hideSignpost?.();
-    if (scene.signpostDom) { scene.signpostDom.destroy(); scene.signpostDom = null; }
-
-    this.bg = scene.add.rectangle(0, 0, cam.width, cam.height, 0x231912, 0.62).setOrigin(0).setInteractive();
-    this.add(this.bg);
-
-    const panelW = Math.min(360, cam.width - 20);
-    const panelH = Math.min(420, cam.height - 40);
-    this.panel = scene.add.graphics();
-    drawPanel(this.panel, cam.width / 2 - panelW / 2, cam.height / 2 - panelH / 2, panelW, panelH, MOBILE.radiusPanel, true);
-    this.add(this.panel);
+    this._destroyed = false;
 
     const plant = getPlant(plantSeed);
-    this.title = scene.add.text(cam.width / 2, cam.height / 2 - panelH / 2 + 16, `Мутации: ${plant.name}`, {
-      fontSize: `${DS.font.size.base}px`, color: UI.css.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle
-    }).setOrigin(0.5, 0);
-    this.add(this.title);
+    this.plant = plant;
 
-    const closeHitArea = scene.add.rectangle(cam.width / 2 + panelW / 2 - 24, cam.height / 2 - panelH / 2 + 24, UNIFIED.minTouch, UNIFIED.minTouch, UNIFIED.color)
-      .setInteractive({ useHandCursor: true })
-      .setDepth(DS.overlay.detail + 4);
-    closeHitArea.setStrokeStyle(2, UNIFIED.colorHi);
-    const closeBtn = scene.add.text(cam.width / 2 + panelW / 2 - 24, cam.height / 2 - panelH / 2 + 12, '✕', {
-      fontSize: `${DS.font.size.lg}px`, color: UI.css.textDark, fontStyle: 'bold'
-    }).setOrigin(0.5, 0);
-    closeHitArea.on('pointerdown', () => this.destroy());
-    this.add([closeHitArea, closeBtn]);
+    // 20 образцов на страницу: 5 в ряд.
+    this.perPage = 20;
+    this.cols = 5;
+    this.totalPages = Math.ceil(MUTATION_COUNT / this.perPage);
 
-    this.grid = scene.add.container(0, 0);
-    this.add(this.grid);
+    this.ui = openOverlay(scene, {
+      title: `✨ Мутации · ${plant.name}`,
+      subtitle: 'Соберите все оттенки одного вида',
+      depth: DS.overlay.detail,
+      maxW: 420,
+      maxH: 560,
+      padding: 20,
+      container: this,
+      onClose: () => this.destroy(),
+    });
 
-    this.pagerText = scene.add.text(cam.width / 2, cam.height / 2 + panelH / 2 - 24, '', {
-      fontSize: `${DS.font.size.xs}px`, color: UI.css.textMuted
-    }).setOrigin(0.5);
-    this.add(this.pagerText);
-
-    this.prevBtn = scene.add.text(cam.width / 2 - panelW / 2 + 30, cam.height / 2 + panelH / 2 - 24, '◀', {
-      fontSize: `${DS.font.size.lg}px`, color: UI.css.textMuted
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(DS.overlay.detail + 4);
-    this.add(this.prevBtn);
-
-    this.nextBtn = scene.add.text(cam.width / 2 + panelW / 2 - 30, cam.height / 2 + panelH / 2 - 24, '▶', {
-      fontSize: `${DS.font.size.lg}px`, color: UI.css.textDark
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(DS.overlay.detail + 4);
-    this.add(this.nextBtn);
-
-    this.prevBtn.on('pointerdown', () => this.changePage(-1));
-    this.nextBtn.on('pointerdown', () => this.changePage(1));
-
-    this.renderPage();
+    this.render();
   }
 
-  changePage(delta) {
-    const newPage = this.page + delta;
-    if (newPage < 0 || newPage >= this.totalPages) return;
-    this.page = newPage;
-    this.renderPage();
-  }
+  render() {
+    const scene = this.scene;
+    const C = this.ui.content;
+    this.ui.body.removeAll(true);
 
-  renderPage() {
-    this.grid.removeAll(true);
-    const cam = this.scene.cameras.main;
-    const plant = getPlant(this.plantSeed);
-    const panelW = Math.min(360, cam.width - 20);
-    const panelH = Math.min(420, cam.height - 40);
+    const found = this.countFound();
 
-    const cols = 5;
-    const cardSize = 46;
+    // Счётчик прогресса.
+    const counter = scene.add.text(C.left, C.top, `Открыто ${found} из ${MUTATION_COUNT}`, {
+      fontSize: `${DS.font.size.xs}px`,
+      fontFamily: DS.font.family.base,
+      fontStyle: 'bold',
+      color: DS.colors.text.muted,
+    }).setOrigin(0, 0);
+    this.ui.body.add(counter);
+
+    const gridTop = C.top + 24;
     const gap = 8;
-    const startX = cam.width / 2 - (cols * (cardSize + gap) - gap) / 2 + cardSize / 2;
-    const startY = cam.height / 2 - panelH / 2 + 60;
+    const tileW = (C.width - (this.cols - 1) * gap) / this.cols;
+    const tileH = tileW + 16;
+    const rows = Math.ceil(this.perPage / this.cols);
+    const gridH = rows * tileH + (rows - 1) * gap;
 
-    const startIndex = this.page * MUT_PER_PAGE;
-    const endIndex = Math.min(startIndex + MUT_PER_PAGE, MUTATION_COUNT);
+    const startIndex = this.page * this.perPage;
+    const endIndex = Math.min(startIndex + this.perPage, MUTATION_COUNT);
 
     for (let i = startIndex; i < endIndex; i++) {
-      const localIdx = i - startIndex;
-      const row = Math.floor(localIdx / cols);
-      const col = localIdx % cols;
-      const x = startX + col * (cardSize + gap);
-      const y = startY + row * (cardSize + gap) + cardSize / 2;
+      const local = i - startIndex;
+      const row = Math.floor(local / this.cols);
+      const col = local % this.cols;
+      const x = C.left + col * (tileW + gap);
+      const y = gridTop + row * (tileH + gap);
 
       const mutId = `mut_${this.plantSeed}_${i}`;
       const unlocked = this.collection.has(mutId);
       const mut = getMutation(this.plantSeed, i);
 
-      const card = this.scene.add.container(x, y);
-
-      // Card border — unified color when unlocked, secondary when locked
-      let borderColor = unlocked ? 0xe8c55a : 0x333333;
-
-      const bgCard = this.scene.add.rectangle(0, 0, cardSize, cardSize, unlocked ? 0x2c3e50 : 0x1c2833)
-        .setStrokeStyle(2, borderColor);
-      card.add(bgCard);
-
-      if (unlocked) {
-        const g = this.scene.add.graphics();
-        g.setPosition(0, cardSize / 2 - 4);
-        drawPixelPlant(g, plant, cardSize / 110, 0, i);
-        card.add(g);
-      } else {
-        card.add(this.scene.add.text(0, 0, '?', { fontSize: '14px', color: '#444' }).setOrigin(0.5));
-      }
-
-      card.setInteractive(new Phaser.Geom.Rectangle(-cardSize / 2, -cardSize / 2, cardSize, cardSize), Phaser.Geom.Rectangle.Contains);
-      card.on('pointerdown', () => {
-        // ФИКС: guard на mut !== null. Раньше при out-of-range индексе падало на mut.mult.toFixed.
-        if (unlocked && mut) {
-          this.scene.showToast(`${mut.name}\nБонус: x${mut.mult.toFixed(1)}`);
-        }
-      });
-
-      this.grid.add(card);
+      this.ui.body.add(this.buildTile(x, y, tileW, tileH, i, mut, unlocked));
     }
 
-    this.pagerText.setText(`Стр. ${this.page + 1} / ${this.totalPages}`);
-    this.prevBtn.setAlpha(this.page > 0 ? 1 : 0.4);
-    this.nextBtn.setAlpha(this.page < this.totalPages - 1 ? 1 : 0.4);
+    // Навигация.
+    const navY = Math.min(gridTop + gridH + 20, C.bottom - 22);
+    this.navY = navY;
+
+    if (this.totalPages > 1) {
+      this.buildNav(C, navY);
+    }
+
+    if (found === 0) {
+      const prompt = createEmptyState(scene, C.left + C.width / 2, navY - 70, C.width - 20, {
+        icon: '🌫️',
+        title: 'Ни один оттенок ещё не найден',
+        hint: 'Редкие мутации появляются при сборе урожая — чем выше удача, тем чаще.',
+      });
+      this.ui.body.add(prompt);
+    }
   }
 
-  destroy() {
-    this.scene.showSignpost?.();
-    super.destroy();
+  buildTile(x, y, w, h, index, mut, unlocked) {
+    const scene = this.scene;
+    const c = scene.add.container(x, y);
+    const r = 8;
+
+    // Плитка-образец: пергамент, у открытых — золотая кайма.
+    const g = scene.add.graphics();
+    g.fillStyle(unlocked ? 0xf7ecd5 : 0xe9dfc9, 1);
+    g.fillRoundedRect(0, 0, w, h, r);
+    g.lineStyle(unlocked ? 2 : 1.2, unlocked ? 0xe8c55a : 0xcdbb9b, 1);
+    g.strokeRoundedRect(0, 0, w, h, r);
+    if (unlocked) {
+      g.fillStyle(0xe8c55a, 0.13);
+      g.fillRoundedRect(0, 0, w, h, r);
+    }
+    c.add(g);
+
+    const artSize = h - 20;
+    if (unlocked && mut) {
+      const art = scene.add.graphics();
+      art.setPosition(w / 2, artSize - 2);
+      drawOutlinedPlant(art, this.plant, artSize / 100, index);
+      c.add(art);
+
+      const name = scene.add.text(w / 2, h - 9, `×${mut.mult.toFixed(1)}`, {
+        fontSize: '9px',
+        fontFamily: DS.font.family.base,
+        fontStyle: 'bold',
+        color: '#6b5a44',
+      }).setOrigin(0.5);
+      c.add(name);
+    } else {
+      const q = scene.add.text(w / 2, h / 2 - 2, '?', {
+        fontSize: `${Math.floor(w * 0.42)}px`,
+        fontFamily: DS.font.family.title,
+        color: '#b9a888',
+      }).setOrigin(0.5);
+      c.add(q);
+    }
+
+    const hit = scene.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.001)
+      .setInteractive({ useHandCursor: unlocked });
+    hit.on('pointerdown', () => {
+      if (unlocked && mut) {
+        this.scene.showToast?.(`${mut.name}\nБонус к цене: ×${mut.mult.toFixed(1)}`);
+      } else {
+        this.scene.showToast?.('Этот оттенок ещё не найден');
+      }
+    });
+    c.add(hit);
+
+    return c;
+  }
+
+  buildNav(C, y) {
+    const scene = this.scene;
+    const makeArrow = (dx) => {
+      const c = scene.add.container(C.left + C.width / 2 + dx, y);
+      const g = scene.add.graphics();
+      g.fillStyle(color(DS.colors.bg.secondary), 1);
+      g.fillCircle(0, 0, 17);
+      g.lineStyle(1.5, color(DS.colors.ui.border), 1);
+      g.strokeCircle(0, 0, 17);
+      const t = scene.add.text(0, -1, dx < 0 ? '◀' : '▶', {
+        fontSize: `${DS.font.size.xs}px`,
+        fontFamily: DS.font.family.base,
+        color: DS.colors.text.secondary,
+      }).setOrigin(0.5);
+      const hit = scene.add.circle(0, 0, 24, 0x000000, 0.001).setInteractive({ useHandCursor: true });
+      c.add([g, t, hit]);
+      this.ui.body.add(c);
+      return { c, hit };
+    };
+
+    const prev = makeArrow(-58);
+    const next = makeArrow(58);
+
+    const pageText = scene.add.text(C.left + C.width / 2, y, `${this.page + 1} / ${this.totalPages}`, {
+      fontSize: `${DS.font.size.xs}px`,
+      fontFamily: DS.font.family.base,
+      fontStyle: 'bold',
+      color: DS.colors.text.secondary,
+    }).setOrigin(0.5);
+    this.ui.body.add(pageText);
+
+    prev.c.setAlpha(this.page > 0 ? 1 : 0.35);
+    next.c.setAlpha(this.page < this.totalPages - 1 ? 1 : 0.35);
+
+    prev.hit.on('pointerdown', () => {
+      if (this.page > 0) { this.page--; this.render(); }
+    });
+    next.hit.on('pointerdown', () => {
+      if (this.page < this.totalPages - 1) { this.page++; this.render(); }
+    });
+  }
+
+  countFound() {
+    let found = 0;
+    for (let i = 0; i < MUTATION_COUNT; i++) {
+      if (this.collection.has(`mut_${this.plantSeed}_${i}`)) found++;
+    }
+    return found;
+  }
+
+  destroy(fromScene) {
+    if (this._destroyed) return;
+    this._destroyed = true;
+    const ui = this.ui;
+    this.ui = null;
+    if (ui) ui.close();
+    try { super.destroy(fromScene); } catch {}
   }
 }

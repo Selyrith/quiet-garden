@@ -3,6 +3,7 @@ import { getPlant } from '../../shared/plants.js';
 import { drawPixelPlant } from './PixelArt.js';
 import { getSeedSellPrice } from '../../shared/balance.js';
 import { DS, drawRoundedRect, drawShadowedRect, createButtonStyle } from './DesignSystem.js';
+import { mulberry32 } from './BakeTexture.js';
 
 export class InventoryBar {
   /**
@@ -43,20 +44,58 @@ export class InventoryBar {
     const h = this.shelfH;
     this.bg.clear();
 
-    // Тень под полкой (layered)
-    drawShadowedRect(this.bg, 8, 4, w - 16, h - 4, DS.radius.lg, DS.colors.bg.elevated, 1, 'lg');
+    // Полка как деревянный лоток из референса (Stardew Valley, Hay Day):
+    // тёплое дерево, тёмная обводка 3 px, светлая кромка сверху и мягкая
+    // тень под лотком. Геометрия не меняется — только материал.
+    this.bg.fillStyle(0x3D2E20, 0.18);
+    this.bg.fillRoundedRect(8, h - 6, w - 16, 10, 14);
+    this.bg.fillStyle(0x3D2E20, 0.10);
+    this.bg.fillRoundedRect(8, h - 2, w - 16, 12, 16);
 
-    // Сама полка - тёплый деревянный тон
-    drawRoundedRect(this.bg, 8, 0, w - 16, h, DS.radius.lg, DS.colors.garden.fence, 1, DS.colors.garden.soilDark, 2);
+    // Дерево: тёмная кайма → тело → светлая верхняя кромка.
+    this.bg.fillStyle(0x6E4527, 1);
+    this.bg.fillRoundedRect(8, 0, w - 16, h, DS.radius.lg);
+    this.bg.fillStyle(0x96663F, 1);
+    this.bg.fillRoundedRect(9.5, 1.5, w - 20, h - 3, DS.radius.lg - 2);
+    this.bg.fillStyle(0xC9A171, 0.55);
+    this.bg.fillRoundedRect(11, 2.5, w - 24, Math.max(4, h * 0.20), DS.radius.md);
 
-    // Легкая текстура досок (тонкие линии)
-    this.bg.lineStyle(1, DS.colors.garden.soil, 0.3);
+    // «Доски»: редкие вертикальные стыки, а не полосы поперёк.
+    this.bg.lineStyle(1, 0x6E4527, 0.45);
     for (let i = 1; i < 4; i++) {
-      const yLine = (h / 4) * i;
+      const xLine = 8 + ((w - 16) / 4) * i;
       this.bg.beginPath();
-      this.bg.moveTo(20, yLine);
-      this.bg.lineTo(w - 20, yLine);
+      this.bg.moveTo(xLine, 8);
+      this.bg.lineTo(xLine, h - 8);
       this.bg.strokePath();
+    }
+
+    // Декор полки: трава по верхней кромке и лоза по краям.
+    // Всё внутри существующего прямоугольника — раскладка не меняется.
+    const rng = mulberry32(9182);
+    for (let x = 22; x < w - 22; x += 26) {
+      if (rng() < 0.4) continue;
+      const hh = 4 + rng() * 5;
+      const sway = (rng() - 0.5) * 3;
+      this.bg.fillStyle(0x6FBF87, 0.9);
+      this.bg.fillTriangle(x, 2, x + sway, 2 - hh, x + 4, 2);
+      this.bg.fillStyle(0x4E9E69, 0.85);
+      this.bg.fillTriangle(x + 4, 2, x + 4 + sway, 1 - hh, x + 7, 2);
+    }
+
+    // Лоза вьётся по левому и правому торцу полки.
+    for (const [dir, edgeX] of [[1, 14], [-1, w - 14]]) {
+      this.bg.lineStyle(1.8, 0x4E9E69, 0.8);
+      this.bg.beginPath();
+      this.bg.moveTo(edgeX, h - 12);
+      this.bg.lineTo(edgeX + dir * 5, h - 26);
+      this.bg.lineTo(edgeX + dir * 1, h - 40);
+      this.bg.strokePath();
+      this.bg.fillStyle(0x6FBF87, 0.95);
+      this.bg.fillEllipse(edgeX + dir * 9, h - 28, 8, 4.5);
+      this.bg.fillEllipse(edgeX + dir * 2, h - 40, 7, 4);
+      this.bg.fillStyle(0x8FD3A5, 0.8);
+      this.bg.fillEllipse(edgeX + dir * 6, h - 16, 7, 3.6);
     }
   }
 
@@ -263,18 +302,48 @@ export class InventoryBar {
     drawShadowedRect(shadow, x - half, y - half + 2, slotSize, slotSize, DS.radius.md,
       isActive ? DS.colors.brand.primary : DS.colors.bg.tertiary, 1, 'sm');
 
-    // Фон слота
+    // Фон слота: «вырезанное окно» в полке — тёмный край, светлая кромка,
+    // золотая обводка у выбранного. Геометрия та же (56×56), меняется материал.
     const bgSlot = this.scene.add.graphics();
-    const bgColor = isActive ? DS.colors.brand.primary : DS.colors.bg.tertiary;
-    const borderColor = isActive ? DS.colors.brand.secondary : DS.colors.ui.border;
-    const borderWidth = isActive ? 3 : 2;
+    const bgColor = isActive ? 0x468A5D : 0xF7EFE1;
+    const borderColor = isActive ? DS.colors.brand.secondary : 0x6E4527;
+    const borderWidth = isActive ? 3 : 2.5;
 
     drawRoundedRect(bgSlot, x - half, y - half, slotSize, slotSize, DS.radius.md, bgColor, 1, borderColor, borderWidth);
+    // Внутренняя тень сверху — слот «утоплен» в доску.
+    bgSlot.fillStyle(0x3D2E20, 0.14);
+    bgSlot.fillRoundedRect(x - half + 3, y - half + 3, slotSize - 6, 7, 5);
+    // Блик по верхней кромке.
+    bgSlot.fillStyle(0xFFFFFF, isActive ? 0.22 : 0.5);
+    bgSlot.fillRoundedRect(x - half + 4, y - half + 2, slotSize - 8, 6, 4);
 
-    // Иконка растения
+    // Иконка растения.
+    //
+    // Было: Graphics на фиксированном (x, y + 4) с масштабом 0.7. У высоких
+    // видов (дерево, кристалл, орб) рисунок уходил за верхнюю кромку слота,
+    // а у гриба — за нижнюю: семена выглядели «сползшими» с полки.
+    // Стало: считаем габарит растения и вписываем его в слот по центру.
+    const v = plant.visual || {};
+    const stemH = (v.stemHeight || 24);
+    const topH = (v.petalLength || 10) * (v.type === 'crystal' ? 1.2 : 1.9);
+    const seedScale = Math.min(0.72, 40 / (stemH + topH));
+    const iconH = (stemH + topH) * seedScale;
+
     const g = this.scene.add.graphics();
-    g.setPosition(x, y + 4);
-    drawPixelPlant(g, plant, 0.7, 0, null);
+    // Базовая точка — низ растения; поднимаем так, чтобы иконка стояла
+    // по центру слота и не вылезала за его кромки.
+    const baseY = y + Math.min(half - 7, iconH / 2);
+    g.setPosition(x, baseY);
+    // Контур как у растений на грядке: без него иконки в полке «плоские»
+    // и сливаются с бумажным фоном слота.
+    const OUT = 1.3;
+    for (const [dx, dy] of [
+      [-OUT, 0], [OUT, 0], [0, -OUT], [0, OUT],
+      [-OUT, -OUT], [OUT, -OUT], [-OUT, OUT], [OUT, OUT],
+    ]) {
+      drawPixelPlant(g, plant, seedScale, 0, null, dx, dy, true);
+    }
+    drawPixelPlant(g, plant, seedScale, 0, null);
 
     // Счётчик
     const countText = this.scene.add.text(x + half - 4, y + half - 4, `${count}`, {
@@ -403,7 +472,14 @@ export class InventoryBar {
   }
 
   animateActiveRing(graphics, x, y, size) {
+    // БЫЛО: вечный addEvent({delay:16}) на каждую перерисовку панели — то есть
+    // на каждую посадку и покупку. Через 20 действий в сцене копились десятки
+    // 60-кадровых колбэков, часть из них уже писала в уничтоженную графику,
+    // и FPS проседал. Теперь живёт строго один твин на панель.
+    if (this._ringTween) { this._ringTween.remove(); this._ringTween = null; }
+
     const drawFrame = (progress) => {
+      if (!graphics || !graphics.active) return;
       graphics.clear();
       const radius = size / 2 + 4 + Math.sin(progress * Math.PI * 2) * 3;
       const alpha = 0.4 + Math.sin(progress * Math.PI * 2) * 0.2;
@@ -411,14 +487,13 @@ export class InventoryBar {
       graphics.strokeCircle(x, y, radius);
     };
 
-    let t = 0;
-    this.scene.time.addEvent({
-      delay: 16,
-      loop: true,
-      callback: () => {
-        t += 0.02;
-        drawFrame(t);
-      }
+    this._ringTween = this.scene.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration: 2000,
+      repeat: -1,
+      onUpdate: (tw) => drawFrame(tw.getValue()),
+      onStop: () => { if (graphics && graphics.active) graphics.clear(); },
     });
   }
 

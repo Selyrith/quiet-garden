@@ -1,87 +1,75 @@
-import { UNIFIED } from '../ui-unified.js';
+import { DS } from '../DesignSystem.js';
+
+/**
+ * Фильтр редкости на правой странице книги — ряд «перьев-закладок».
+ *
+ * Раньше вкладки рисовались в точке y = -H/2 (верх книги) и уезжали под
+ * обложку. Теперь позиция приходит из привязок книги: над правой страницей,
+ * под строкой поиска. Активная — тёмно-зелёная с золотой каймой.
+ */
 
 export const RARITY_TABS = [
-  { id: 'all',       name: 'Все',   },
-  { id: 'common',    name: 'Обыч.', },
-  { id: 'uncommon',  name: 'Необ.', },
-  { id: 'rare',      name: 'Редк.', },
-  { id: 'epic',      name: 'Эпик.', },
-  { id: 'legendary', name: 'Лег.',  },
+  { id: 'all',       label: 'Все' },
+  { id: 'common',    label: 'Обыч.' },
+  { id: 'uncommon',  label: 'Необ.' },
+  { id: 'rare',      label: 'Редк.' },
+  { id: 'epic',      label: 'Эпик.' },
+  { id: 'legendary', label: 'Лег.' },
 ];
 
 export function setupRarityTabs(book) {
   const scene = book.scene;
 
-  const W = book.bookW;
-  const H = book.bookH;
-
-  // Адаптивные размеры: 6 вкладок должны влезать в ширину книги
-  const maxTabsWidth = W - 40;
   const gap = 4;
-  const tabW = Math.min(44, Math.floor((maxTabsWidth - (RARITY_TABS.length - 1) * gap) / RARITY_TABS.length));
   const tabH = 24;
-
-  const totalW = RARITY_TABS.length * tabW + (RARITY_TABS.length - 1) * gap;
-  const startX = -totalW / 2 + tabW / 2;
-  const tabY = -H / 2;
+  const x0 = book.rarityX ?? book.pageLeftX;
+  const y = book.rarityY ?? (book.pageTop + 42);
+  const availableW = book.pageW;
+  const tabW = Math.min(52, Math.floor((availableW - (RARITY_TABS.length - 1) * gap) / RARITY_TABS.length));
 
   const buttons = new Map();
 
   RARITY_TABS.forEach((tab, i) => {
-    const x = startX + i * (tabW + gap);
-
-    const container = scene.add.container(x, tabY);
+    const x = x0 + i * (tabW + gap);
+    const c = scene.add.container(x, y);
 
     const bg = scene.add.graphics();
-
-    const drawBg = (isActive) => {
+    const drawBg = (active) => {
       bg.clear();
-
-      // Активная закладка — акцентная терракота, неактивная — приглушённый
-      // пергамент. Раньше обе были белыми, а цвет текста совпадал сам с собой.
-      bg.fillStyle(isActive ? UNIFIED.color : 0xe6dcc9, 1);
-      bg.fillRoundedRect(-tabW / 2, -tabH, tabW, tabH + 10, { tl: 6, tr: 6, bl: 0, br: 0 });
-
-      // Обводка
-      bg.lineStyle(1.5, isActive ? 0xe8c55a : 0xe6dccc, 1);
-      bg.lineBetween(-tabW / 2, -tabH + 6, -tabW / 2, 5);
-      bg.lineBetween(tabW / 2, -tabH + 6, tabW / 2, 5);
-      bg.beginPath();
-      bg.arc(0, -tabH + 6, tabW / 2, Math.PI, 0, false);
-      bg.strokePath();
-
-      // Блик для активной
-      if (isActive) {
-        bg.fillStyle(0xffffff, 0.2);
-        bg.fillRoundedRect(-tabW / 2, -tabH, tabW, tabH + 10, { tl: 6, tr: 6, bl: 0, br: 0 });
-      }
+      bg.fillStyle(active ? 0x4a7c59 : 0xe4d4b5, 1);
+      bg.fillRoundedRect(0, 0, tabW, tabH, 6);
+      bg.lineStyle(1.2, active ? 0xe8c55a : 0xcbb896, 1);
+      bg.strokeRoundedRect(0, 0, tabW, tabH, 6);
     };
-
     drawBg(book.activeRarity === tab.id);
+    c.add(bg);
 
-    const textColor = book.activeRarity === tab.id ? '#fcf8f0' : '#3d2e20';
-    const text = scene.add.text(0, -tabH / 2, tab.name, {
-      fontSize: '12px', color: textColor, fontStyle: 'bold', fontFamily: 'Nunito, Georgia, serif'
+    const text = scene.add.text(tabW / 2, tabH / 2, tab.label, {
+      fontSize: '9px',
+      fontFamily: DS.font.family.base,
+      fontStyle: 'bold',
+      color: book.activeRarity === tab.id ? '#f7ecd5' : '#6b5a44',
     }).setOrigin(0.5);
+    c.add(text);
 
-    container.add([bg, text]);
-
-    // Клик
-    const hit = scene.add.rectangle(0, -tabH / 2, tabW, tabH, 0x000000, 0.001).setInteractive({ useHandCursor: true });
-    hit.on('pointerdown', (pointer, localX, localY, event) => {
-      event.stopPropagation();
+    const hit = scene.add.rectangle(tabW / 2, tabH / 2, tabW, Math.max(tabH, 40), 0x000000, 0.001)
+      .setInteractive({ useHandCursor: true });
+    hit.on('pointerdown', (pointer, lx, ly, event) => {
+      event?.stopPropagation?.();
       if (book.activeRarity === tab.id) return;
       book.activeRarity = tab.id;
       book.page = 0;
-      book.animatePageTurn('left', () => {
-        book.renderPage();
-      });
+      book.renderPage();
     });
+    c.add(hit);
 
-    container.add(hit);
-    book.bookContainer.add(container);
-
-    buttons.set(tab.id, { container, bg, text, drawBg });
+    // Обновляем цвет подписи вместе с фоном.
+    const wrappedDraw = (active) => {
+      drawBg(active);
+      text.setColor(active ? '#f7ecd5' : '#6b5a44');
+    };
+    buttons.set(tab.id, { container: c, bg, text, drawBg: wrappedDraw });
+    book.bookContainer.add(c);
   });
 
   return buttons;

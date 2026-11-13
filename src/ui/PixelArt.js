@@ -17,6 +17,26 @@ export function hsl(h, s, l) {
   return (Math.round((r + m) * 255) << 16) | (Math.round((g + m) * 255) << 8) | Math.round((b + m) * 255);
 }
 
+/**
+ * Рисует растение С ТЁМНЫМ КОНТУРОМ — так же, как оно выглядит на грядке.
+ *
+ * Зачем: в оверлеях (карточка растения, паки, мутации) растения рисовались
+ * напрямую, без обводки, и «плавали» на светлом фоне — выглядели плоско и
+ * отличались от того же вида в саду. Один хелпер держит стиль единым.
+ */
+export function drawOutlinedPlant(g, plant, scale, mutationIndex = null, offsetX = 0, offsetY = 0) {
+  const o = Math.max(0.9, scale * 1.8);
+  const dirs = [
+    [-o, 0], [o, 0], [0, -o], [0, o],
+    [-o, -o], [o, -o], [-o, o], [o, o],
+  ];
+  for (const [dx, dy] of dirs) {
+    drawPixelPlant(g, plant, scale, 0, mutationIndex, offsetX + dx, offsetY + dy, true);
+  }
+  drawPixelPlant(g, plant, scale, 0, mutationIndex, offsetX, offsetY, false);
+}
+
+
 export function drawPixelPlant(
   g, plant, scale, sway = 0, mutationIndex = null,
   offsetX = 0, offsetY = 0, isOutline = false
@@ -142,23 +162,52 @@ function drawFlower(g, v, s, ox, oy, sway, stemColor, leafDark, leafLight, petal
     g.fillCircle(px, py, petalLen * 0.6);
   }
 
+  // Внутренний ряд лепестков: тело + блик у кончика + тонкая прожилка.
+  // На грядке 42–55 px это даёт «объёмный цветок», а не плоское пятно.
   for (let i = 0; i < petals; i++) {
     const angle = (Math.PI * 2 * i) / petals;
-    const px = flowerX + Math.cos(angle) * petalLen * 0.5;
-    const py = flowerY + Math.sin(angle) * petalLen * 0.5;
-    g.fillStyle((isRainbow && !isOutline) ? hsl((hue + i * 45) % 360, 90, 60) : petalLight, 1);
+    const dx = Math.cos(angle);
+    const dy = Math.sin(angle);
+    const px = flowerX + dx * petalLen * 0.5;
+    const py = flowerY + dy * petalLen * 0.5;
+    const body = (isRainbow && !isOutline) ? hsl((hue + i * 45) % 360, 90, 60) : petalLight;
+    g.fillStyle(body, 1);
     g.fillCircle(px, py, petalLen * 0.6);
+
     if (!isOutline) {
-      g.fillStyle(highlight, 0.8);
-      g.fillCircle(px - petalLen * 0.15, py - petalLen * 0.15, petalLen * 0.2);
+      // Блик к кончику лепестка (свет сверху-слева).
+      g.fillStyle(highlight, 0.85);
+      g.fillCircle(px - dx * petalLen * 0.18, py - dy * petalLen * 0.18, petalLen * 0.22);
+      // Тень у основания — лепесток «входит» в сердцевину.
+      g.fillStyle(petalDark, 0.55);
+      g.fillCircle(px + dx * petalLen * 0.3, py + dy * petalLen * 0.3, petalLen * 0.2);
+      // Прожилка.
+      g.lineStyle(Math.max(0.8, petalLen * 0.06), highlight, 0.55);
+      g.beginPath();
+      g.moveTo(px - dx * petalLen * 0.25, py - dy * petalLen * 0.25);
+      g.lineTo(px + dx * petalLen * 0.3, py + dy * petalLen * 0.3);
+      g.strokePath();
     }
   }
 
+  // Сердцевина: тёмный ободок, тело, тычинки-точки, блик.
+  g.fillStyle(petalDark, 0.9);
+  g.fillCircle(flowerX, flowerY, centerR * 1.25);
   g.fillStyle(centerColor, 1);
   g.fillCircle(flowerX, flowerY, centerR);
   if (!isOutline) {
-    g.fillStyle(highlight, 0.9);
-    g.fillCircle(flowerX - centerR * 0.3, flowerY - centerR * 0.3, centerR * 0.4);
+    const stamen = Math.max(3, Math.round(petals / 2));
+    for (let i = 0; i < stamen; i++) {
+      const a = (Math.PI * 2 * i) / stamen;
+      g.fillStyle(highlight, 0.95);
+      g.fillCircle(
+        flowerX + Math.cos(a) * centerR * 0.6,
+        flowerY + Math.sin(a) * centerR * 0.6,
+        Math.max(0.8, centerR * 0.16),
+      );
+    }
+    g.fillStyle(0xffffff, 0.55);
+    g.fillCircle(flowerX - centerR * 0.32, flowerY - centerR * 0.34, centerR * 0.42);
   }
 }
 
@@ -194,23 +243,54 @@ function drawTree(g, v, s, ox, oy, colorLeafD, colorLeafL, isOutline) {
   const h = v.stemHeight * s;
   const w = v.stemWidth * s * 2;
   
-  // Ствол (коричневый)
-  g.fillStyle(isOutline ? 0x1a0f0a : 0x5d4037, 1);
-  g.fillRect(ox - w/2, oy - h, w, h);
-  
-  // Крона
+  // Ствол: тёмная кора + светлая кромка + развилка.
+  g.fillStyle(isOutline ? 0x1a0f0a : 0x5D4037, 1);
+  g.fillRoundedRect(ox - w / 2, oy - h, w, h, Math.min(w / 2, 2 * s));
+  if (!isOutline) {
+    g.fillStyle(0x3E2A1B, 0.55);
+    g.fillRect(ox + w * 0.08, oy - h + 2, Math.max(1, w * 0.3), h - 2);
+    g.fillStyle(0x8A6A4E, 0.7);
+    g.fillRect(ox - w * 0.42, oy - h + 2, Math.max(1, w * 0.16), h * 0.7);
+    // Развилка у кроны.
+    g.lineStyle(Math.max(1, w * 0.35), 0x5D4037, 1);
+    g.lineBetween(ox, oy - h + 2, ox - w * 1.2, oy - h - w * 0.7);
+    g.lineBetween(ox, oy - h + 2, ox + w * 1.1, oy - h - w * 0.6);
+  }
+
+  // Крона: три слоя — тень, тело, свет.
   const crownY = oy - h;
   const r = v.petalLength * s * 1.8;
-  
+
+  if (!isOutline) {
+    // Тёмная подложка снизу-справа.
+    g.fillStyle(0x1F3D22, 0.35);
+    g.fillCircle(ox + r * 0.1, crownY + r * 0.18, r * 1.05);
+  }
+
   g.fillStyle(isOutline ? 0x1a0f0a : colorLeafD, 1);
   g.fillCircle(ox, crownY, r);
-  g.fillCircle(ox - r*0.6, crownY + r*0.3, r*0.7);
-  g.fillCircle(ox + r*0.6, crownY + r*0.3, r*0.7);
-  
+  g.fillCircle(ox - r * 0.6, crownY + r * 0.3, r * 0.7);
+  g.fillCircle(ox + r * 0.6, crownY + r * 0.3, r * 0.7);
+
   if (!isOutline) {
-    g.fillStyle(colorLeafL, 0.8);
-    g.fillCircle(ox - r*0.3, crownY - r*0.3, r*0.4);
-    g.fillCircle(ox + r*0.2, crownY - r*0.1, r*0.3);
+    // Средний слой кроны — объём.
+    g.fillStyle(colorLeafL, 1);
+    g.fillCircle(ox - r * 0.35, crownY - r * 0.25, r * 0.62);
+    g.fillCircle(ox + r * 0.3, crownY - r * 0.05, r * 0.5);
+
+    // Световые пятна (солнце сверху-слева).
+    g.fillStyle(0xDFF0B0, 0.75);
+    g.fillCircle(ox - r * 0.45, crownY - r * 0.42, r * 0.28);
+    g.fillStyle(0xFFFFFF, 0.35);
+    g.fillCircle(ox - r * 0.55, crownY - r * 0.5, r * 0.13);
+
+    // Редкие ягодки/цветы в кроне — «живое» дерево.
+    const berries = 3 + (v.leafCount % 3);
+    for (let i = 0; i < berries; i++) {
+      const a = -Math.PI * 0.9 + (Math.PI * 0.8 * i) / berries;
+      g.fillStyle(0xE8A2B8, 0.95);
+      g.fillCircle(ox + Math.cos(a) * r * 0.55, crownY + Math.sin(a) * r * 0.4, Math.max(1, 1.1 * s));
+    }
   }
 }
 
@@ -218,21 +298,48 @@ function drawMushroom(g, v, s, ox, oy, colorD, colorL, colorHi, isOutline) {
   const h = v.stemHeight * s;
   const w = v.stemWidth * s * 1.5;
   
-  // Ножка (белая)
-  g.fillStyle(isOutline ? 0x1a0f0a : 0xeeeeee, 1);
-  g.fillRect(ox - w/2, oy - h, w, h);
-  
-  // Шляпка
+  // Ножка: тень с одной стороны + светлая кромка + «юбочка».
+  const stemFill = isOutline ? 0x1a0f0a : 0xEEE6D8;
+  g.fillStyle(stemFill, 1);
+  g.fillRoundedRect(ox - w / 2, oy - h, w, h, Math.min(w / 2, 3 * s));
+  if (!isOutline) {
+    g.fillStyle(colorD, 0.22);
+    g.fillRect(ox + w * 0.1, oy - h + 2, w * 0.35, h - 2);
+    g.fillStyle(0xFFFFFF, 0.5);
+    g.fillRect(ox - w * 0.42, oy - h + 2, Math.max(1, w * 0.18), h - 2);
+    // Юбочка у основания шляпки.
+    g.fillStyle(0xFFF6E0, 0.85);
+    g.fillEllipse(ox, oy - h + 2 * s, w * 1.5, w * 0.7);
+  }
+
+  // Шляпка: тёмная тень снизу, тело, светлый блик сверху.
   const cr = v.petalLength * s * 1.5;
   g.fillStyle(isOutline ? 0x1a0f0a : colorD, 1);
-  g.fillEllipse(ox, oy - h, cr*2, cr);
-  
-  // Точки на шляпке
+  g.fillEllipse(ox, oy - h, cr * 2, cr);
+
   if (!isOutline) {
-    g.fillStyle(colorHi, 0.8);
-    g.fillCircle(ox - cr*0.4, oy - h - cr*0.2, 2.5*s);
-    g.fillCircle(ox + cr*0.5, oy - h - cr*0.3, 2*s);
-    g.fillCircle(ox, oy - h - cr*0.6, 1.5*s);
+    // Пластинки под шляпкой.
+    g.fillStyle(0x2C1B10, 0.35);
+    g.fillEllipse(ox, oy - h + cr * 0.34, cr * 1.7, cr * 0.34);
+    g.lineStyle(Math.max(0.7, 0.9 * s), 0xFFF6E0, 0.35);
+    for (let i = -3; i <= 3; i++) {
+      const lx = ox + i * cr * 0.22;
+      g.lineBetween(lx, oy - h + cr * 0.2, lx, oy - h + cr * 0.44);
+    }
+    // Верхний блик — шляпка «глянцевая».
+    g.fillStyle(colorL, 1);
+    g.fillEllipse(ox - cr * 0.1, oy - h - cr * 0.28, cr * 1.2, cr * 0.42);
+    g.fillStyle(0xFFFFFF, 0.4);
+    g.fillEllipse(ox - cr * 0.32, oy - h - cr * 0.36, cr * 0.45, cr * 0.18);
+
+    // Пятнышки: у каждого гриба свой рисунок (хвост от семени).
+    const spots = 3 + (v.leafCount % 3);
+    for (let i = 0; i < spots; i++) {
+      const a = -Math.PI + (Math.PI * (i + 0.5)) / spots;
+      const rr = cr * (0.35 + ((i * 37) % 40) / 100);
+      g.fillStyle(colorHi, 0.9);
+      g.fillCircle(ox + Math.cos(a) * rr, oy - h - cr * 0.12 + Math.sin(a) * rr * 0.5, (1.6 + (i % 3) * 0.7) * s);
+    }
   }
 }
 
@@ -250,8 +357,27 @@ function drawCrystal(g, v, s, ox, oy, colorD, colorL, colorHi, isOutline) {
   g.fillTriangle(ox + w*0.8, oy - h*0.7, ox + w*0.2, oy, ox + w*1.4, oy);
   
   if (!isOutline) {
-    g.fillStyle(colorHi, 0.6);
-    g.fillTriangle(ox, oy - h + 4*s, ox - w*0.2, oy - 4*s, ox + w*0.1, oy - 4*s);
+    // Ядро кристалла — самое светлое, «свет внутри камня».
+    g.fillStyle(colorHi, 0.85);
+    g.fillTriangle(ox, oy - h + 3 * s, ox - w * 0.22, oy - 2 * s, ox + w * 0.1, oy - 2 * s);
+    g.fillStyle(0xFFFFFF, 0.55);
+    g.fillTriangle(ox, oy - h + 6 * s, ox - w * 0.1, oy - h * 0.45, ox + w * 0.04, oy - h * 0.5);
+
+    // Тёмная грань по правой стороне — объём.
+    g.fillStyle(0x2C1B10, 0.22);
+    g.fillTriangle(ox, oy - h, ox + w / 2, oy, ox + w * 0.18, oy);
+
+    // Парящие осколки вокруг.
+    g.fillStyle(colorL, 0.9);
+    g.fillTriangle(ox - w * 1.15, oy - h * 0.75, ox - w * 1.32, oy - h * 0.6, ox - w * 1.02, oy - h * 0.58);
+    g.fillTriangle(ox + w * 1.08, oy - h * 0.9, ox + w * 1.26, oy - h * 0.72, ox + w * 0.98, oy - h * 0.7);
+    g.fillStyle(0xFFFFFF, 0.75);
+    g.fillCircle(ox - w * 1.15, oy - h * 0.85, Math.max(0.8, 1.1 * s));
+    g.fillCircle(ox + w * 1.2, oy - h * 0.55, Math.max(0.7, 1 * s));
+
+    // Каменное основание.
+    g.fillStyle(colorD, 0.85);
+    g.fillEllipse(ox, oy, w * 1.5, w * 0.45);
   }
 }
 
@@ -268,10 +394,19 @@ function drawOrb(g, v, s, ox, oy, colorStem, colorOrb, colorHi, isOutline) {
   g.fillCircle(ox, oy - h - r*0.5, r);
   
   if (!isOutline) {
-    g.fillStyle(colorHi, 0.8);
-    g.fillCircle(ox - r*0.3, oy - h - r*0.8, r*0.3);
-    // Магическое кольцо
-    g.lineStyle(2*s, colorHi, 0.5);
-    g.strokeEllipse(ox, oy - h - r*0.5, r*2.5, r*0.8);
+    // Ядро: три круга от светлого к тёмному — шар «светится изнутри».
+    g.fillStyle(colorHi, 0.55);
+    g.fillCircle(ox, oy - h - r * 0.5, r * 0.75);
+    g.fillStyle(colorHi, 0.9);
+    g.fillCircle(ox - r * 0.2, oy - h - r * 0.62, r * 0.4);
+    g.fillStyle(0xFFFFFF, 0.95);
+    g.fillCircle(ox - r * 0.32, oy - h - r * 0.72, r * 0.2);
+
+    // Магическое кольцо (наклонный эллипс) + орбитальные точки.
+    g.lineStyle(Math.max(1.2, 1.6 * s), colorHi, 0.55);
+    g.strokeEllipse(ox, oy - h - r * 0.5, r * 2.6, r * 0.85);
+    g.fillStyle(0xFFFFFF, 0.9);
+    g.fillCircle(ox + r * 1.15, oy - h - r * 0.42, Math.max(1, 1.1 * s));
+    g.fillCircle(ox - r * 1.05, oy - h - r * 0.6, Math.max(0.8, 0.9 * s));
   }
 }

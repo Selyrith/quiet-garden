@@ -1,7 +1,16 @@
+import Phaser from 'phaser';
 import { getPlant } from '../../shared/plants.js';
 import { plantTileColor } from '../../shared/sprite-renderer.js';
 
-const STAGE_SCALES = [0.4, 0.65, 0.85, 1.05];
+// Стадии роста: раньше первая стадия была 0.4 от 64 px (≈16 px после
+// масштабирования под тайл) — на телефоне это две точки, стадии не читались.
+// Подняли нижнюю границу и развели ступени, чтобы «росток → кустик → цветок»
+// различались с одного взгляда.
+const STAGE_SCALES = [0.58, 0.76, 0.92, 1.08];
+
+/** Амплитуда покачивания листвы (радианы) и скорость — общие для всех грядок. */
+const SWAY_AMPLITUDE = 0.045;
+const SWAY_SPEED = 0.0016;
 
 function getScaleForStageProgress(stage, progress) {
   if (stage < 0) return 0;
@@ -14,8 +23,10 @@ function getScaleForStageProgress(stage, progress) {
 
 export const GameSceneTiles = {
   tickTiles(delta) {
-    const lerp = 1 - Math.pow(0.001, delta / 1000); 
-    for (const [, tile] of this.tiles) {
+    const lerp = 1 - Math.pow(0.001, delta / 1000);
+    const now = this.time ? this.time.now : Date.now();
+
+    for (const [key, tile] of this.tiles) {
       if (tile.plantImage && tile.stage >= 0) {
         if (tile.targetScale && Math.abs(tile.currentScale - tile.targetScale) > 0.001) {
           tile.currentScale += (tile.targetScale - tile.currentScale) * lerp;
@@ -24,6 +35,20 @@ export const GameSceneTiles = {
         if (tile.shadowImage && tile.targetShadowScale && Math.abs(tile.currentShadowScale - tile.targetShadowScale) > 0.01) {
           tile.currentShadowScale += (tile.targetShadowScale - tile.currentShadowScale) * lerp;
           tile.shadowImage.setScale(tile.currentShadowScale);
+        }
+
+        // Живой сад: листва чуть качается. У каждой грядки своя фаза
+        // (из ключа), поэтому поле не «дышит синхронно», как метроном.
+        if (tile.stage > 0 && !tile.swayTween) {
+          if (tile.swayPhase === undefined) {
+            let h = 0;
+            for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
+            tile.swayPhase = (Math.abs(h) % 1000) / 1000 * Math.PI * 2;
+          }
+          const amp = tile.stage >= 3 ? SWAY_AMPLITUDE * 0.6 : SWAY_AMPLITUDE;
+          tile.plantImage.rotation = Math.sin(now * SWAY_SPEED + tile.swayPhase) * amp;
+        } else {
+          tile.plantImage.rotation = 0;
         }
       }
     }
@@ -53,7 +78,6 @@ export const GameSceneTiles = {
     }
 
     if (tile.grassGfx) tile.grassGfx.setVisible(stage === -1);
-    if (tile.decorSprite) tile.decorSprite.setVisible(stage === -1);
 
     if (tile.rect) {
       if (stage === 3 && seed !== null) {
@@ -64,6 +88,9 @@ export const GameSceneTiles = {
         tile.rect.setStrokeStyle(2, 0x5d4037);
       }
     }
+
+    // Пустая грядка — магия гаснет.
+    if (stage < 0 && tile.aura) tile.aura.hide();
 
     // Тень теперь создается один раз в createTile() как Image (shadowImage)
     if (tile.shadowImage) {
@@ -103,9 +130,15 @@ export const GameSceneTiles = {
         if (plant.rarity.id === 'epic') rarityMult = 1.3;
         if (plant.rarity.id === 'legendary') rarityMult = 1.45;
 
-        const baseScale = (this.tileSize / 64) * rarityMult; // 64x64 текстура -> 42/64 = 0.65 базовый масштаб
+        // База считается от 52, а не от 64: внутри текстуры 64×64 сам рисунок
+        // занимает ~2/3, поэтому растение выходило заметно меньше грядки и
+        // читалось как «мусор» на земле. Теперь зрелое растение занимает
+        // почти всю грядку (и немного выходит за неё — сад должен быть пышным).
+        const baseScale = (this.tileSize / 52) * rarityMult;
         const stageFactor = getScaleForStageProgress(stage, progress);
         tile.targetScale = baseScale * stageFactor;
+
+        if (tile.aura) tile.aura.apply(plant.rarity.id, stage);
 
         if (instant) {
           tile.currentScale = tile.targetScale;
@@ -283,8 +316,44 @@ export const GameSceneTiles = {
   flashTile(key, color = 0xffffff) {
     const tile = this.tiles.get(key);
     if (!tile || !tile.rect) return;
-    const flash = this.add.rectangle(tile.rect.x, tile.rect.y, tile.rect.width, tile.rect.height, color, 0.45).setDepth(6);
-    this.tweens.add({ targets: flash, alpha: 0, duration: 400, ease: 'Cubic.easeOut', onComplete: () => flash.destroy() });
+    // Мягкий импульс вместо жёсткого прямоугольника: эллипс в тон рамки,
+    // быстрое расширение + затухание. Читается как «отклик», а не «ошибка».
+    const pulse = this.add.ellipse(tile.rect.x, tile.rect.y, tile.rect.width * 0.6, tile.rect.height * 0.6, color, 0.30)
+      .setDepth(6)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({
+      targets: pulse,
+      scaleX: 1.5,
+      scaleY: 1.5,
+      alpha: 0,
+      duration: 420,
+      ease: 'Cubic.easeOut',
+      onComplete: () => pulse.destroy()
+    });
+  },
+
+  /**
+   * Рябь от полива: расходящийся эллипс на месте грядки.
+   * Отдельно от flashTile — это не «отклик на тап», а явный признак воды.
+   */
+  spawnWaterRipple(key) {
+    const tile = this.tiles.get(key);
+    if (!tile || !tile.rect) return;
+    for (let i = 0; i < 2; i++) {
+      const ring = this.add.ellipse(tile.rect.x, tile.rect.y, tile.rect.width * 0.4, tile.rect.height * 0.4)
+        .setStrokeStyle(2, 0x9cd4ff, 0.8)
+        .setDepth(7);
+      this.tweens.add({
+        targets: ring,
+        scaleX: 1.9,
+        scaleY: 1.9,
+        alpha: 0,
+        delay: i * 130,
+        duration: 620,
+        ease: 'Sine.easeOut',
+        onComplete: () => ring.destroy()
+      });
+    }
   },
 
   spawnParticles(key, color = 0xffffff) {

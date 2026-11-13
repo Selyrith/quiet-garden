@@ -14,11 +14,16 @@ export const GameSceneNetwork = {
 
     s.on('room-code', ({ roomCode }) => {
       this.roomCode = roomCode;
-      if (this.topBar && this.topBar.roomCodeText) this.topBar.roomCodeText.setText(`КОД: ${roomCode}`);
+      // topBar.roomCodeText не существует — код в HUD не обновлялся никогда.
+      if (this.topBar?.setRoomCode) this.topBar.setRoomCode(roomCode);
+      else if (this.topBar?.roomCode) this.topBar.roomCode.setText(`КОД: ${roomCode}`);
       const url = new URL(window.location.href);
       url.searchParams.set('room', roomCode);
       window.history.replaceState({}, '', url);
-      this.showToast(`Комната ${roomCode}`);
+      // Подсказка-приглашение: код теперь виден в HUD (а не «КОД: ...»),
+      // и тап по нему копирует ссылку. Без этого игрок не понимает,
+      // как позвать второго человека в сад.
+      this.showToast(`Сад ${roomCode} · коснитесь кода сверху, чтобы скопировать приглашение`, 4500);
     });
 
     s.on('initial-state', (data) => {
@@ -113,9 +118,19 @@ export const GameSceneNetwork = {
         }
       }
 
-      if (!this.myRole && !this.rolesPrompted) {
-        this.rolesPrompted = true;
-        this.openRoles(false);
+      // БЫЛО: выбор роли открывался МОДАЛКОЙ сразу после входа и закрывал
+      // собой весь сад — первое, что видел игрок, была форма поверх пустоты.
+      // СТАЛО: сад виден сразу, а роль предлагаем мягко (меню ☰ → «Роли»),
+      // один раз на браузер и только если роль ещё не выбрана.
+      if (!this.myRole) {
+        let hinted = false;
+        try { hinted = localStorage.getItem('qg_role_hint') === '1'; } catch {}
+        if (!hinted) {
+          try { localStorage.setItem('qg_role_hint', '1'); } catch {}
+          this.time.delayedCall(4000, () => {
+            if (!this.myRole) this.showToast('Роль даёт бонус к саду — выберите её в меню ☰', 4200);
+          });
+        }
       }
 
       // P2: "Пока вас не было" — показываем тост с дельтой
@@ -178,9 +193,12 @@ export const GameSceneNetwork = {
       }
     });
     s.on('roles-updated', ({ roles }) => {
+      // Раньше новая карта ролей НЕ присваивалась: читали старую this.roles,
+      // поэтому myRole оставался null и в HUD у обоих висел «👤».
+      this.roles = { ...(roles || {}) };
       this.myRole = this.roles[this.myPlayerId] || null;
       this.updatePlayerList();
-      for (const [pid, roleId] of Object.entries(roles)) {
+      for (const [pid, roleId] of Object.entries(this.roles)) {
         const av = this.avatars.get(pid);
         if (av) tintAvatar(av, roleId);
       }
@@ -204,7 +222,7 @@ export const GameSceneNetwork = {
       });
     });
 
-    s.on('tile-updated', ({ key, stage, progress, seed, mutationIndex, action, byPlayer, earnedCoins, harvestedSeed, harvestedMutIndex, isNewSpecies }) => {
+    s.on('tile-updated', ({ key, stage, progress, seed, mutationIndex, action, byPlayer, earnedCoins, harvestedSeed, harvestedMutIndex, wetUntil, isNewSpecies }) => {
       this.updateTile(key, stage, progress ?? 0, seed ?? null, false, mutationIndex ?? null);
       if (byPlayer && byPlayer !== this.myPlayerId) {
         const roleId = this.roles[byPlayer];
@@ -229,7 +247,11 @@ export const GameSceneNetwork = {
           this.sound.water();
         }
         this.spawnParticles(key, 0x4fc3f7);
-        this.markTileWet(key, 60000);
+        this.spawnWaterRipple(key);
+        // Длительность «мокрой» земли — ровно та, что дал сервер
+        // (с бонусом роли-поливальщика), а не жёсткие 60 секунд.
+        const wetMs = wetUntil ? Math.max(1000, wetUntil - Date.now()) : 60000;
+        this.markTileWet(key, wetMs);
       }
       if (action === 'harvest') {
         if (byPlayer && byPlayer !== this.myPlayerId) {
@@ -305,11 +327,17 @@ export const GameSceneNetwork = {
       for (const { key, progress: p } of progress) this.setProgress(key, p); 
     });
     
-    s.on('action-rejected', ({ reason, key }) => {
-      // откат визуала: убрать индикатор actions, рамку pending, вернуть аватар на последнюю известную позицию
+    s.on('action-rejected', ({ reason, key, busy }) => {
+      // «Действие ещё выполняется» — это не ошибка игрока, а дребезг тапа
+      // на телефоне. Раньше клиент на это орал «ошибка» и дёргал аватар
+      // назад, хотя действие шло нормально. Теперь такие отказы тихие.
+      const soft = busy === true || reason === 'Подождите, действие выполняется';
       const pid = this.myPlayerId;
       this.hideJobIndicator(pid);
       if (key) this.unmarkPending(key);
+      if (soft) return;
+
+      // откат визуала: убрать индикатор actions, рамку pending, вернуть аватар на последнюю известную позицию
       const pos = this.playerPositions.get(pid);
       const av = this.avatars.get(pid);
       if (av && pos) {
