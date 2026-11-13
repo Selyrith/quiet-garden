@@ -29,6 +29,36 @@ import { StressMetrics } from '../telemetry/StressMetrics.js';
 
 const GRID = 8;
 
+// Спрайты магического сада: отдельные прозрачные crops из листа, не единая
+// гигантская текстура. Исходные 300 procedural plant textures остаются основой.
+const GARDEN_SPRITES = {
+  starVine: 'star_vine.png', moonTree: 'moon_tree.png', glowingLotus: 'glowing_lotus.png',
+  pinkLotus: 'pink_lotus.png', autumnFlower: 'autumn_flower.png', blueFlower: 'blue_flower.png',
+  pinkFlower: 'pink_flower.png', branchingFlower: 'branching_flower.png', flowerSpray: 'flower_spray.png',
+  whiteDaisy: 'white_daisy.png', violetBloom: 'violet_bloom.png', pinkBloom: 'pink_bloom.png',
+  flowerCluster: 'flower_cluster.png', stonePortal: 'stone_portal.png', redMushroom: 'red_mushroom.png',
+  violetMushroom: 'violet_mushroom.png', blueMushroom: 'blue_mushroom.png', purpleMushroom: 'purple_mushroom.png',
+  violetShrub: 'violet_shrub.png', spottedMushroom: 'spotted_mushroom.png', sageMushroom: 'sage_mushroom.png',
+  purpleFlowerShrub: 'purple_flower_shrub.png', crystalSprig: 'crystal_sprig.png', crystalLotus: 'crystal_lotus.png',
+  flowerArch: 'flower_arch.png', violetFlowerCluster: 'violet_flower_cluster.png', starMushroom: 'star_mushroom.png',
+  forestHerb: 'forest_herb.png', flowerCloche: 'flower_cloche.png', crystalOrb: 'crystal_orb.png',
+  crystalCluster: 'crystal_cluster.png', candleCluster: 'candle_cluster.png', gardenStone: 'garden_stone.png',
+  birdhouse: 'birdhouse.png', raven: 'raven.png', wateringCan: 'watering_can.png', basket: 'basket.png',
+  lantern: 'lantern.png', treasureChest: 'treasure_chest.png', woodSign: 'wood_sign.png', directionSign: 'direction_sign.png',
+  birdBath: 'bird_bath.png', woodFence: 'wood_fence.png', stoneBench: 'stone_bench.png',
+  stoneFountain: 'stone_fountain.png', flowerPatch: 'flower_patch.png', steppingStones: 'stepping_stones.png',
+  mossyRock: 'mossy_rock.png', snailStump: 'snail_stump.png', lpcLilyCluster: 'lpc_lily_cluster.png'
+};
+
+// Небольшие декоративные растения появляются только на части пустых клеток;
+// их положение детерминировано и они скрываются при посадке.
+const TILE_DECOR_KEYS = [
+  'whiteDaisy', 'violetBloom', 'pinkBloom', 'flowerCluster', 'redMushroom',
+  'violetMushroom', 'blueMushroom', 'purpleMushroom', 'spottedMushroom',
+  'sageMushroom', 'crystalCluster', 'forestHerb', 'flowerPatch', 'flowerSpray',
+  'crystalLotus', 'pinkLotus', 'violetShrub', 'lpcLilyCluster'
+];
+
 export default class GameScene extends Phaser.Scene {
   constructor() {
     super({ key: 'GameScene' });
@@ -116,6 +146,10 @@ export default class GameScene extends Phaser.Scene {
   preload() {
     this.load.image('avatar-male', '/assets/images/avatar-male.svg');
     this.load.image('avatar-female', '/assets/images/avatar-female.svg');
+    this.load.image('sprite_pet_egg', '/assets/sprites/tiny-farm/tile_0125.png');
+    for (const [key, file] of Object.entries(GARDEN_SPRITES)) {
+      this.load.image(`garden_${key}`, `/assets/sprites/magic-garden/${file}`);
+    }
   }
 
   async create() {
@@ -421,6 +455,13 @@ export default class GameScene extends Phaser.Scene {
     wetOverlay.setVisible(false);
     tileContainer.add(wetOverlay);
 
+    // Декоративный элемент на пустой грядке — появляется только пока ничего не посажено.
+    // Выбор детерминирован по координатам: одинаковая клетка всегда показывает один и тот же спрайт.
+    const decorKey = TILE_DECOR_KEYS[(x * 31 + y * 17) % TILE_DECOR_KEYS.length];
+    const decorSprite = this.add.image(0, 0, `garden_${decorKey}`)
+      .setOrigin(0.5).setDepth(4).setVisible(true);
+    tileContainer.add(decorSprite);
+
     // Тонкая рамка-обводка в world-координатах: именно её цвет меняется
     // через setStrokeStyle (подсветка ожидания действия, цвет растения и т.п.).
     // Прозрачная заливка — текстура земли просвечивает.
@@ -455,6 +496,7 @@ export default class GameScene extends Phaser.Scene {
       bar,
       plantImage,
       shadowImage,
+      decorSprite,
       stage: -1,
       progress: 0,
       seed: null,
@@ -527,9 +569,17 @@ export default class GameScene extends Phaser.Scene {
 
   createPetButton() {
     const S = this.layout.side;
-    this.petBtn = this.add.text(S.petX ?? S.x, S.petY, '🥚', {
-      fontSize: '28px'
-    }).setOrigin(0.5).setDepth(150).setInteractive({ useHandCursor: true });
+    const isEgg = !this.pet || this.pet.stage === 'egg';
+    if (isEgg) {
+      // Яйцо питомца — спрайт, а не эмодзи (чёткий визуал на маленьких экранах).
+      this.petBtn = this.add.image(S.petX ?? S.x, S.petY, 'sprite_pet_egg')
+        .setOrigin(0.5).setDepth(150).setInteractive({ useHandCursor: true });
+      this.petBtn.setDisplaySize(28, 28);
+    } else {
+      this.petBtn = this.add.text(S.petX ?? S.x, S.petY, this.pet.petEmoji || '🐾', {
+        fontSize: '28px'
+      }).setOrigin(0.5).setDepth(150).setInteractive({ useHandCursor: true });
+    }
 
     const btn = this.petBtn;
 
@@ -553,6 +603,47 @@ export default class GameScene extends Phaser.Scene {
         this.showHint(`${this.pet.petEmoji} ${this.pet.petName} просто прогуливается`);
       }
     });
+  }
+
+  updatePetBtn(pet) {
+    if (!this.petBtn) return;
+    const isEgg = pet.stage === 'egg';
+    if (isEgg && this.petBtn.texture?.key !== 'sprite_pet_egg') {
+      const pos = this.petBtn.getData('pos') || { x: this.petBtn.x, y: this.petBtn.y };
+      this.petBtn.destroy();
+      this.petBtn = this.add.image(pos.x, pos.y, 'sprite_pet_egg')
+        .setOrigin(0.5).setDepth(150).setInteractive({ useHandCursor: true });
+      this.petBtn.setDisplaySize(28, 28);
+      this.petBtn.setData('pos', pos);
+      this.petBtn.on('pointerover', () => this.showHint('Яйцо питомца — нажмите, чтобы ответить на вопрос'));
+      this.petBtn.on('pointerout', () => this.showHint(''));
+      this.petBtn.on('pointerdown', () => {
+        this.sound.click();
+        if (this.petModal) return;
+        if (!this.pet || this.pet.stage === 'egg') this.openPetQuestionModal();
+        else if (this.pet.stage === 'walking') {
+          this.showHint(`${this.pet.petEmoji} ${this.pet.petName} просто прогуливается`);
+        }
+      });
+    } else if (!isEgg && this.petBtn.texture?.key === 'sprite_pet_egg') {
+      const pos = this.petBtn.getData('pos') || { x: this.petBtn.x, y: this.petBtn.y };
+      this.petBtn.destroy();
+      this.petBtn = this.add.text(pos.x, pos.y, pet.petEmoji || '🐾', {
+        fontSize: '28px'
+      }).setOrigin(0.5).setDepth(150).setInteractive({ useHandCursor: true });
+      this.petBtn.on('pointerover', () => this.showHint(`${pet.petEmoji} ${pet.petName} гуляет по саду`));
+      this.petBtn.on('pointerout', () => this.showHint(''));
+      this.petBtn.on('pointerdown', () => {
+        this.sound.click();
+        if (this.petModal) return;
+        if (!this.pet || this.pet.stage === 'egg') this.openPetQuestionModal();
+        else if (this.pet.stage === 'walking') {
+          this.showHint(`${pet.petEmoji} ${pet.petName} просто прогуливается`);
+        }
+      });
+    } else if (!isEgg) {
+      this.petBtn.setText(pet.petEmoji || '🐾');
+    }
   }
 
     /**
@@ -583,10 +674,11 @@ export default class GameScene extends Phaser.Scene {
     drawRoundedRect(panel, px, py, panelW, panelH, DS.radius.xl, DS.colors.bg.elevated, 1, DS.colors.ui.border, 2);
     modalGroup.push(panel);
 
-    // Яйцо питомца (emoji — цвет не нужен)
-    const eggText = this.add.text(w / 2, py + 60, '🥚', { fontSize: '72px' })
+    // Яйцо питомца — спрайт (ясный визуал на любом размере экрана)
+    const eggSprite = this.add.image(w / 2, py + 60, 'sprite_pet_egg')
       .setOrigin(0.5).setDepth(baseDepth + 10).setScrollFactor(0);
-    modalGroup.push(eggText);
+    eggSprite.setDisplaySize(72, 72);
+    modalGroup.push(eggSprite);
 
     // Заголовок — Lilita One
     const eggLabel = this.add.text(w / 2, py + 115, 'Яйцо питомца', {
@@ -766,15 +858,6 @@ export default class GameScene extends Phaser.Scene {
     // Поворот в сторону движения
     if (pet.petDir !== undefined) {
       this.petContainer.setScale(pet.petDir > 0 ? 1 : -1, 1);
-    }
-  }
-
-  updatePetBtn(pet) {
-    if (!this.petBtn) return;
-    if (pet.stage === 'egg') {
-      this.petBtn.setText('🥚');
-    } else if (pet.stage === 'walking') {
-      this.petBtn.setText(pet.petEmoji || '🐾');
     }
   }
 
@@ -963,61 +1046,66 @@ export default class GameScene extends Phaser.Scene {
   }
 
   createGardenDecor() {
-    // Cozy environment: pond, lanterns, bench, fence - positioned within visible garden area
+    // Уютный декор сада: пруд, фонарики, скамейка, забор — спрайты из
+    // листа «магический сад» (предоставлен пользователем) вместо векторов.
     const totalSize = this.tileSize * GRID;
     const offsetX = (this.scale.width - totalSize) / 2;
     const offsetY = (this.scale.height - totalSize) / 2 - 10;
-    const g = this.add.graphics().setDepth(-5); // Behind garden but visible
 
-    // Пруд в углу сада (внутри границ сада)
-    const pondX = offsetX + totalSize * 0.85;
-    const pondY = offsetY + totalSize * 0.85;
-    const pondW = totalSize * 0.25;
-    const pondH = totalSize * 0.15;
-    g.fillStyle(0x3f7fbf, 0.35);
-    g.fillEllipse(pondX, pondY, pondW, pondH);
-    g.fillStyle(0x6fb7e8, 0.25);
-    g.fillEllipse(pondX - pondW * 0.1, pondY - pondH * 0.1, pondW * 0.6, pondH * 0.5);
-    g.lineStyle(2, 0x2c5f8a, 0.25);
-    g.strokeEllipse(pondX, pondY, pondW, pondH);
+    this.gardenDecor = [];
 
-    // Фонарики по периметру сада (внутри границ)
+    // Пруд в углу сада — фонтан/камни с водой (магический сад).
+    const pondX = offsetX + totalSize * 0.88;
+    const pondY = offsetY + totalSize * 0.86;
+    const pondW = totalSize * 0.22;
+    const pondH = totalSize * 0.16;
+    const pond = this.add.image(pondX, pondY, 'garden_stone_fountain')
+      .setOrigin(0.5).setDepth(-5).setScrollFactor(0);
+    pond.setDisplaySize(pondW, pondH);
+    this.gardenDecor.push(pond);
+
+    // Фонарики по периметру сада (внутри границ).
     const lanterns = [
-      [offsetX + totalSize * 0.05, offsetY + totalSize * 0.1],
-      [offsetX + totalSize * 0.95, offsetY + totalSize * 0.15],
-      [offsetX + totalSize * 0.1, offsetY + totalSize * 0.9],
-      [offsetX + totalSize * 0.9, offsetY + totalSize * 0.85]
+      [offsetX + totalSize * 0.06, offsetY + totalSize * 0.11],
+      [offsetX + totalSize * 0.94, offsetY + totalSize * 0.15],
+      [offsetX + totalSize * 0.07, offsetY + totalSize * 0.9],
+      [offsetX + totalSize * 0.92, offsetY + totalSize * 0.85]
     ];
     for (const [lx, ly] of lanterns) {
-      g.fillStyle(0xfff3b0, 0.25);
-      g.fillCircle(lx, ly, 14);
-      g.fillStyle(0xffd54f, 0.5);
-      g.fillCircle(lx, ly, 6);
-      g.fillStyle(0x5d4037, 1);
-      g.fillRect(lx - 1.5, ly + 4, 3, 12);
+      const lantern = this.add.image(lx, ly, 'garden_lantern')
+        .setOrigin(0.5).setDepth(-5).setScrollFactor(0);
+      lantern.setDisplaySize(22, 26);
+      this.gardenDecor.push(lantern);
     }
 
-    // Скамейка у пруда (внутри сада)
-    const bx = pondX - totalSize * 0.12, by = pondY - totalSize * 0.12;
-    g.fillStyle(0x8d6e63, 1);
-    g.fillRoundedRect(bx, by, 36, 8, 2);
-    g.fillRect(bx + 3, by + 8, 3, 8);
-    g.fillRect(bx + 30, by + 8, 3, 8);
+    // Скамейка у пруда (внутри сада).
+    const bx = pondX - totalSize * 0.08, by = pondY - totalSize * 0.1;
+    const bench = this.add.image(bx, by, 'garden_stone_bench')
+      .setOrigin(0.5).setDepth(-5).setScrollFactor(0);
+    bench.setDisplaySize(40, 16);
+    this.gardenDecor.push(bench);
 
-    // Лёгкий забор по краям сада
-    g.fillStyle(0x6d4c41, 0.7);
-    for (let i = 0; i <= 8; i++) {
+    // Лёгкий деревянный забор по краям сада (детерминированные позиции).
+    for (let i = 0; i <= GRID; i++) {
       const fx = offsetX + i * this.tileSize;
-      g.fillRect(fx, offsetY - 6, 4, 6);
-      g.fillRect(fx, offsetY + totalSize, 4, 6);
+      for (const [fy, flipY] of [[offsetY - 5, false], [offsetY + totalSize, false]]) {
+        const post = this.add.image(fx, fy, 'garden_wood_fence')
+          .setOrigin(0.5).setDepth(-5).setScrollFactor(0);
+        post.setDisplaySize(6, 10);
+        post.setFlipY(flipY);
+        this.gardenDecor.push(post);
+      }
     }
-    for (let i = 0; i <= 8; i++) {
+    for (let i = 0; i <= GRID; i++) {
       const fy = offsetY + i * this.tileSize;
-      g.fillRect(offsetX - 6, fy, 6, 4);
-      g.fillRect(offsetX + totalSize, fy, 6, 4);
+      for (const [fx, flipX] of [[offsetX - 5, false], [offsetX + totalSize, false]]) {
+        const post = this.add.image(fx, fy, 'garden_wood_fence')
+          .setOrigin(0.5).setDepth(-5).setScrollFactor(0);
+        post.setDisplaySize(10, 6);
+        post.setFlipX(flipX);
+        this.gardenDecor.push(post);
+      }
     }
-
-    this.gardenDecor = g;
   }
 
   showEmote(playerId, emote) {

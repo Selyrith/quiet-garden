@@ -53,6 +53,7 @@ export const GameSceneTiles = {
     }
 
     if (tile.grassGfx) tile.grassGfx.setVisible(stage === -1);
+    if (tile.decorSprite) tile.decorSprite.setVisible(stage === -1);
 
     if (tile.rect) {
       if (stage === 3 && seed !== null) {
