@@ -114,17 +114,58 @@ export function setupGoalsHandlers(io, socket, deps) {
 
     goals.treeClaimed.push(nodeId);
 
-    // Apply rewards
-    if (nodeId === 'first') {
-      room.coins += 50;
+    // Награда применяется ИЗ ДАННЫХ (node.effect), а не цепочкой if-ов.
+    // Раньше каждый узел имел свою ветку, и новый узел без ветки молча
+    // не давал ничего. Здесь «награда без эффекта» невозможна.
+    applyTreeNodeEffect(room, node);
+
+    // Монеты — единственная награда, которую нужно разослать сразу.
+    if (node.effect && node.effect.coins) {
       io.to(code).emit('coins-updated', { coins: room.coins });
     }
-    if (nodeId === 'ten') room.incomeBonusPermanent = (room.incomeBonusPermanent || 0) + 0.20;
-    if (nodeId === 'twenty5') room.maxActivitiesBonus = (room.maxActivitiesBonus || 0) + 1;
-    if (nodeId === 'fifty') room.upgradeDiscount = Math.max(room.upgradeDiscount || 0, 0.10);
-    if (nodeId === 'activity15') room.gardenRowsBonus = (room.gardenRowsBonus || 0) + 1;
 
     socket.emit('goals-updated', { goals: serializeGoals(room, pid) });
     socket.emit('tree-result', { ok: true, message: `Получено: ${node.reward}` });
   });
+}
+
+/**
+ * Применяет декларативную награду узла дерева прогресса.
+ *
+ * Поддерживаемые ключи `effect`:
+ *   coins                  — прибавить к монетам комнаты
+ *   incomeBonusPermanent   — прибавить к постоянному бонусу дохода
+ *   maxActivitiesBonus     — прибавить к лимиту активностей
+ *   upgradeDiscount        — поднять скидку на улучшения (берём максимум)
+ *   gardenRowsBonus        — прибавить к бонусу «рядов грядок»
+ *
+ * Неизвестный ключ — ошибка программиста, а не тихий no-op: логируем,
+ * чтобы новый узел не оказался «наградой, которая ничего не делает».
+ */
+export function applyTreeNodeEffect(room, node) {
+  const effect = node && node.effect;
+  if (!effect || typeof effect !== 'object') return;
+
+  for (const [key, value] of Object.entries(effect)) {
+    switch (key) {
+      case 'coins':
+        room.coins = (room.coins || 0) + value;
+        break;
+      case 'incomeBonusPermanent':
+        room.incomeBonusPermanent = (room.incomeBonusPermanent || 0) + value;
+        break;
+      case 'maxActivitiesBonus':
+        room.maxActivitiesBonus = (room.maxActivitiesBonus || 0) + value;
+        break;
+      case 'upgradeDiscount':
+        // скидки не суммируются — берём наибольшую, иначе можно уйти в минус
+        room.upgradeDiscount = Math.max(room.upgradeDiscount || 0, value);
+        break;
+      case 'gardenRowsBonus':
+        room.gardenRowsBonus = (room.gardenRowsBonus || 0) + value;
+        break;
+      default:
+        console.error(`[tree-claim] узел "${node.id}": неизвестный эффект "${key}" — награда не применена`);
+    }
+  }
 }

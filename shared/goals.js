@@ -24,12 +24,29 @@ export const QUEST_POOL = [
   { id: 'plant8',     text: 'Посади 8 растений',           target: 8,  reward: 25, event: 'plant' }
 ];
 
+/**
+ * Узлы дерева прогресса.
+ *
+ * `reward` — человекочитаемая строка для UI.
+ * `effect` — ДЕКЛАРАТИВНОЕ описание награды; применяется сервером
+ *            универсально (см. applyTreeNodeEffect в server/goals-handlers.js).
+ *
+ * Раньше награды применялись цепочкой `if (nodeId === '...')`, а `reward`
+ * был просто строкой для показа. Любой новый узел без ветки в этой цепочке
+ * выглядел рабочим, но не давал ничего — и обнаружить это можно было только
+ * вручную. Теперь награда — данные, и «награда без эффекта» невозможна.
+ */
 export const TREE_NODES = [
-  { id: 'first',   text: 'Первый цветок',          reward: '+50 монет',    check: 'harvestTotal',  target: 1 },
-  { id: 'ten',     text: '10 растений собрано',    reward: '+20% доход',   check: 'harvestTotal',  target: 10 },
-  { id: 'twenty5', text: '25 видов открыто',       reward: '+1 активность',check: 'speciesCount',  target: 25 },
-  { id: 'fifty',   text: '50 растений собрано',    reward: '−10% цены',    check: 'harvestTotal',  target: 50 },
-  { id: 'activity15', text: '15 активностей',      reward: '+1 ряд грядок',check: 'activityTotal', target: 15 }
+  { id: 'first',   text: 'Первый цветок',          reward: '+50 монет',     check: 'harvestTotal',  target: 1,
+    effect: { coins: 50 } },
+  { id: 'ten',     text: '10 растений собрано',    reward: '+20% доход',    check: 'harvestTotal',  target: 10,
+    effect: { incomeBonusPermanent: 0.20 } },
+  { id: 'twenty5', text: '25 видов открыто',       reward: '+1 активность', check: 'speciesCount',  target: 25,
+    effect: { maxActivitiesBonus: 1 } },
+  { id: 'fifty',   text: '50 растений собрано',    reward: '−10% цены',     check: 'harvestTotal',  target: 50,
+    effect: { upgradeDiscount: 0.10 } },
+  { id: 'activity15', text: '15 активностей',      reward: '+1 ряд грядок', check: 'activityTotal', target: 15,
+    effect: { gardenRowsBonus: 1 } }
 ];
 
 function dateKey(d = new Date()) {
