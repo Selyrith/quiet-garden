@@ -32,13 +32,13 @@ export class GenderSelectionOverlay extends Phaser.GameObjects.Container {
 
     // Заголовок
     this.title = scene.add.text(panelX, panelY - panelH / 2 + 40, 'Выберите персонажа', {
-      fontSize: `${DS.font.size.xl}px`, color: UI.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle
+      fontSize: `${DS.font.size.xl}px`, color: UI.css.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle
     }).setOrigin(0.5);
     this.add(this.title);
 
     // Подсказка
     this.subtitle = scene.add.text(panelX, panelY - panelH / 2 + 80, 'Это будет ваш аватар в саду', {
-      fontSize: `${DS.font.size.base}px`, color: UI.textMuted
+      fontSize: `${DS.font.size.base}px`, color: UI.css.textMuted
     }).setOrigin(0.5);
     this.add(this.subtitle);
 
@@ -71,10 +71,10 @@ export class GenderSelectionOverlay extends Phaser.GameObjects.Container {
 
     // Подписи под аватарами
     this.maleLabel = scene.add.text(startX, avatarY + avatarSize / 2 + 20, 'Мужской', {
-      fontSize: `${DS.font.size.base}px`, color: UI.textDark, fontStyle: 'bold'
+      fontSize: `${DS.font.size.base}px`, color: UI.css.textDark, fontStyle: 'bold'
     }).setOrigin(0.5);
     this.femaleLabel = scene.add.text(startX + avatarSize + gap, avatarY + avatarSize / 2 + 20, 'Женский', {
-      fontSize: `${DS.font.size.base}px`, color: UI.textMuted, fontStyle: 'bold'
+      fontSize: `${DS.font.size.base}px`, color: UI.css.textMuted, fontStyle: 'bold'
     }).setOrigin(0.5);
     this.add([this.maleLabel, this.femaleLabel]);
 

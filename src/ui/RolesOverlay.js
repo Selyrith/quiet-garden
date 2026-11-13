@@ -30,13 +30,13 @@ export class RolesOverlay extends Phaser.GameObjects.Container {
     const titleText = currentRole ? 'Сменить роль' : 'Выберите роль';
     this.add(scene.add.text(
       cam.width / 2, cam.height / 2 - panelH / 2 + 14, titleText,
-      { fontSize: `${DS.font.size.lg}px`, color: UI.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle }
+      { fontSize: `${DS.font.size.lg}px`, color: UI.css.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle }
     ).setOrigin(0.5, 0));
 
     this.add(scene.add.text(
       cam.width / 2, cam.height / 2 - panelH / 2 + 38,
       'Роль даёт пассивные бонусы',
-      { fontSize: `${DS.font.size.xs}px`, color: UI.textMuted }
+      { fontSize: `${DS.font.size.xs}px`, color: UI.css.textMuted }
     ).setOrigin(0.5, 0));
 
     if (currentRole) {
@@ -47,7 +47,7 @@ export class RolesOverlay extends Phaser.GameObjects.Container {
       const closeBtn = scene.add.text(
         cam.width / 2 + panelW / 2 - 24,
         cam.height / 2 - panelH / 2 + 12, '✕',
-        { fontSize: `${DS.font.size.lg}px`, color: UI.textDark, fontStyle: 'bold' }
+        { fontSize: `${DS.font.size.lg}px`, color: UI.css.textDark, fontStyle: 'bold' }
       ).setOrigin(0.5, 0);
       closeHitArea.on('pointerdown', () => this.destroy());
       this.add([closeHitArea, closeBtn]);
@@ -57,7 +57,7 @@ export class RolesOverlay extends Phaser.GameObjects.Container {
         .setDepth(DS.overlay.roles + 2);
       const skipBtn = scene.add.text(
         cam.width / 2, cam.height / 2 + panelH / 2 - 20, 'Пропустить',
-        { fontSize: `${DS.font.size.sm}px`, color: UI.textDark, fontStyle: 'bold' }
+        { fontSize: `${DS.font.size.sm}px`, color: UI.css.textDark, fontStyle: 'bold' }
       ).setOrigin(0.5);
       skipHit.on('pointerdown', () => {
         this.scene.socket?.emit('role-set', { roleId: 'gardener' });
@@ -97,11 +97,11 @@ export class RolesOverlay extends Phaser.GameObjects.Container {
 
       this.add(scene.add.text(
         startX + 16, y + 14, `${role.icon} ${role.name}`,
-        { fontSize: `${DS.font.size.base}px`, color: UI.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle }
+        { fontSize: `${DS.font.size.base}px`, color: UI.css.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle }
       ));
       this.add(scene.add.text(
         startX + 16, y + 42, role.desc,
-        { fontSize: `${DS.font.size.xs}px`, color: UI.textMuted, wordWrap: { width: cardW - 32 } }
+        { fontSize: `${DS.font.size.xs}px`, color: UI.css.textMuted, wordWrap: { width: cardW - 32 } }
       ));
     });
   }

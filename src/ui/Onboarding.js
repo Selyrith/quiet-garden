@@ -23,7 +23,7 @@ export class Onboarding {
     if (n === 1) {
       // Подсветка инвентаря внизу — unified color pulse
       this.hint = scene.add.text(scene.scale.width / 2, scene.scale.height - 150,
-        '👆 Выбери семя в инвентаре', { fontSize: '16px', color: UI.textLight, backgroundColor: '#5c4a3aee',
+        '👆 Выбери семя в инвентаре', { fontSize: '16px', color: UI.css.textLight, backgroundColor: '#5c4a3aee',
         padding: { x: 12, y: 6 }, fontStyle: 'bold' }).setOrigin(0.5).setDepth(400);
     } else if (n === 2) {
       // Подсветка центральной грядки (2,3) — unified color pulse
@@ -33,7 +33,7 @@ export class Onboarding {
         scene.tweens.add({ targets: this.pulse, alpha: { from: 0.2, to: 0.6 }, duration: 800, yoyo: true, repeat: -1 });
       }
       this.hint = scene.add.text(scene.scale.width / 2, scene.scale.height - 150,
-        '👆 Тапни по грядке (2,3)', { fontSize: '16px', color: UI.textLight, backgroundColor: '#5c4a3aee',
+        '👆 Тапни по грядке (2,3)', { fontSize: '16px', color: UI.css.textLight, backgroundColor: '#5c4a3aee',
         padding: { x: 12, y: 6 }, fontStyle: 'bold' }).setOrigin(0.5).setDepth(400);
     } else if (n === 3) {
       // Подсветка кнопки "Полить" — unified color pulse
@@ -48,7 +48,7 @@ export class Onboarding {
         scene.tweens.add({ targets: this.pulse, scale: { from: 0.9, to: 1.2 }, duration: 800, yoyo: true, repeat: -1 });
       }
       this.hint = scene.add.text(scene.scale.width / 2, scene.scale.height - 150,
-        '💧 Полей растение, чтобы ускорить рост', { fontSize: '16px', color: UI.textLight, backgroundColor: '#5c4a3aee',
+        '💧 Полей растение, чтобы ускорить рост', { fontSize: '16px', color: UI.css.textLight, backgroundColor: '#5c4a3aee',
         padding: { x: 12, y: 6 }, fontStyle: 'bold' }).setOrigin(0.5).setDepth(400);
     }
   }

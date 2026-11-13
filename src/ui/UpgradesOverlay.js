@@ -74,12 +74,12 @@ export class UpgradesOverlay extends Phaser.GameObjects.Container {
       this.cardsContainer.add(icon);
 
       const name = this.scene.add.text(x - panelW / 2 + 60, y + 10, u.name, {
-        fontSize: '16px', color: UI.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle
+        fontSize: '16px', color: UI.css.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle
       });
       this.cardsContainer.add(name);
 
       const levelText = this.scene.add.text(x - panelW / 2 + 60, y + 32, `Ур. ${level}/${u.maxLevel}`, {
-        fontSize: '13px', color: UI.woodMid
+        fontSize: '13px', color: UI.css.woodMid
       });
       this.cardsContainer.add(levelText);
 

@@ -50,7 +50,7 @@ export class SettingsOverlay {
 
     // Закрытие: тач-таргет 48×48, явная глубина внутри контейнера.
     const closeBtn = scene.add.text(panelW / 2 - 28, -panelH / 2 + 28, '✕', {
-      fontSize: `${MOBILE.font.title}px`, color: UI.textMuted, fontStyle: 'bold'
+      fontSize: `${MOBILE.font.title}px`, color: UI.css.textMuted, fontStyle: 'bold'
     }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(DS.overlay.settings + 3);
     const closeHit = scene.add.rectangle(panelW / 2 - 28, -panelH / 2 + 28, MOBILE.tap, MOBILE.tap, 0x000000, 0.001)
       .setInteractive({ useHandCursor: true }).setDepth(DS.overlay.settings + 2);

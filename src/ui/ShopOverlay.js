@@ -28,12 +28,12 @@ export class ShopOverlay extends Phaser.GameObjects.Container {
     this.add(this.panel);
 
     this.title = scene.add.text(cam.width / 2, cam.height / 2 - panelH / 2 + 24, '🛒 Магазин семян', {
-      fontSize: '24px', color: UI.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle
+      fontSize: '24px', color: UI.css.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle
     }).setOrigin(0.5, 0);
     this.add(this.title);
 
     this.coinsText = scene.add.text(cam.width / 2, cam.height / 2 - panelH / 2 + 56, `🪙 ${coins}`, {
-      fontSize: '18px', color: UI.textDark, fontStyle: 'bold'
+      fontSize: '18px', color: UI.css.textDark, fontStyle: 'bold'
     }).setOrigin(0.5, 0);
     this.add(this.coinsText);
 
@@ -56,13 +56,13 @@ export class ShopOverlay extends Phaser.GameObjects.Container {
       this.add(cardBg);
 
       const titleText = scene.add.text(cam.width / 2 - cardW / 2 + 16, y + 10, pack.name, {
-        fontSize: '17px', color: UI.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle,
+        fontSize: '17px', color: UI.css.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle,
         wordWrap: { width: cardW - 110, useAdvancedWrap: true }
       });
       this.add(titleText);
 
       const descText = scene.add.text(cam.width / 2 - cardW / 2 + 16, y + 32, pack.desc, {
-        fontSize: '12px', color: UI.woodMid,
+        fontSize: '12px', color: UI.css.woodMid,
         wordWrap: { width: cardW - 110, useAdvancedWrap: true }
       });
       this.add(descText);

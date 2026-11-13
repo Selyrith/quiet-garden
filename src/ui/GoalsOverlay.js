@@ -31,7 +31,7 @@ export class GoalsOverlay extends Phaser.GameObjects.Container {
 
     this.title = scene.add.text(
       cam.width / 2, cam.height / 2 - panelH / 2 + 12, 'Цели',
-      { fontSize: '18px', color: UI.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle }
+      { fontSize: '18px', color: UI.css.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle }
     ).setOrigin(0.5, 0);
     this.add(this.title);
 
@@ -162,7 +162,7 @@ export class GoalsOverlay extends Phaser.GameObjects.Container {
       const canClaim = done && !q.claimed;
 
       this.content.add(this.scene.add.text(startX, y, q.text, {
-        fontSize: '13px', color: UI.textLight, fontFamily: UI.fontBody
+        fontSize: '13px', color: UI.css.textLight, fontFamily: UI.fontBody
       }));
       y += 20;
 

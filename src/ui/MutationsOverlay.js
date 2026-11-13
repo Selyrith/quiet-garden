@@ -35,7 +35,7 @@ export class MutationsOverlay extends Phaser.GameObjects.Container {
 
     const plant = getPlant(plantSeed);
     this.title = scene.add.text(cam.width / 2, cam.height / 2 - panelH / 2 + 16, `Мутации: ${plant.name}`, {
-      fontSize: `${DS.font.size.base}px`, color: UI.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle
+      fontSize: `${DS.font.size.base}px`, color: UI.css.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle
     }).setOrigin(0.5, 0);
     this.add(this.title);
 
@@ -44,7 +44,7 @@ export class MutationsOverlay extends Phaser.GameObjects.Container {
       .setDepth(DS.overlay.detail + 4);
     closeHitArea.setStrokeStyle(2, UNIFIED.colorHi);
     const closeBtn = scene.add.text(cam.width / 2 + panelW / 2 - 24, cam.height / 2 - panelH / 2 + 12, '✕', {
-      fontSize: `${DS.font.size.lg}px`, color: UI.textDark, fontStyle: 'bold'
+      fontSize: `${DS.font.size.lg}px`, color: UI.css.textDark, fontStyle: 'bold'
     }).setOrigin(0.5, 0);
     closeHitArea.on('pointerdown', () => this.destroy());
     this.add([closeHitArea, closeBtn]);
@@ -53,17 +53,17 @@ export class MutationsOverlay extends Phaser.GameObjects.Container {
     this.add(this.grid);
 
     this.pagerText = scene.add.text(cam.width / 2, cam.height / 2 + panelH / 2 - 24, '', {
-      fontSize: `${DS.font.size.xs}px`, color: UI.textMuted
+      fontSize: `${DS.font.size.xs}px`, color: UI.css.textMuted
     }).setOrigin(0.5);
     this.add(this.pagerText);
 
     this.prevBtn = scene.add.text(cam.width / 2 - panelW / 2 + 30, cam.height / 2 + panelH / 2 - 24, '◀', {
-      fontSize: `${DS.font.size.lg}px`, color: UI.textMuted
+      fontSize: `${DS.font.size.lg}px`, color: UI.css.textMuted
     }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(DS.overlay.detail + 4);
     this.add(this.prevBtn);
 
     this.nextBtn = scene.add.text(cam.width / 2 + panelW / 2 - 30, cam.height / 2 + panelH / 2 - 24, '▶', {
-      fontSize: `${DS.font.size.lg}px`, color: UI.textDark
+      fontSize: `${DS.font.size.lg}px`, color: UI.css.textDark
     }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(DS.overlay.detail + 4);
     this.add(this.nextBtn);
 

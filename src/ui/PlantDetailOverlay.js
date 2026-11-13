@@ -45,7 +45,7 @@ export class PlantDetailOverlay extends Phaser.GameObjects.Container {
       .setInteractive({ useHandCursor: true });
     closeHit.setStrokeStyle(2, UNIFIED.colorHi);
     const closeBtn = scene.add.text(panelX + panelW / 2 - 24, panelY - panelH / 2 + 12, '✕',
-      { fontSize: `${DS.font.size.lg}px`, color: UI.textDark, fontStyle: 'bold' }
+      { fontSize: `${DS.font.size.lg}px`, color: UI.css.textDark, fontStyle: 'bold' }
     ).setOrigin(0.5, 0);
     closeHit.on('pointerdown', () => this.destroy());
     this.add([closeHit, closeBtn]);
@@ -65,7 +65,7 @@ export class PlantDetailOverlay extends Phaser.GameObjects.Container {
       this.add(g);
     } else {
       const q = scene.add.text(panelX, y + spriteSize / 2, '?', {
-        fontSize: `${spriteSize * 0.6}px`, color: UI.textMuted, fontStyle: 'bold'
+        fontSize: `${spriteSize * 0.6}px`, color: UI.css.textMuted, fontStyle: 'bold'
       }).setOrigin(0.5);
       this.add(q);
     }
@@ -87,7 +87,7 @@ export class PlantDetailOverlay extends Phaser.GameObjects.Container {
 
       const stats = `⏱ ${plant.growSeconds}s   ·   💰 ${plant.price}`;
       this.add(scene.add.text(panelX, y, stats, {
-        fontSize: `${smallFs}px`, color: UI.textMuted
+        fontSize: `${smallFs}px`, color: UI.css.textMuted
       }).setOrigin(0.5, 0));
       y += smallFs + 10;
     }
@@ -97,11 +97,11 @@ export class PlantDetailOverlay extends Phaser.GameObjects.Container {
 
     if (!unlocked) {
       this.add(scene.add.text(panelX, y + 15, 'Это растение ещё не открыто.', {
-        fontSize: `${fs}px`, color: UI.textMuted, fontStyle: 'italic'
+        fontSize: `${fs}px`, color: UI.css.textMuted, fontStyle: 'italic'
       }).setOrigin(0.5, 0));
       this.add(scene.add.text(panelX, y + 55,
         'Посадите его семя и соберите урожай,\nчтобы добавить его в книгу.', {
-          fontSize: `${smallFs}px`, color: UI.textMuted, align: 'center', lineSpacing: 4
+          fontSize: `${smallFs}px`, color: UI.css.textMuted, align: 'center', lineSpacing: 4
         }).setOrigin(0.5, 0));
 
       const btnY = panelY + panelH / 2 - 44;
@@ -130,31 +130,31 @@ export class PlantDetailOverlay extends Phaser.GameObjects.Container {
     const lineSpacing = 3;
 
     this.add(scene.add.text(contentLeft, y, '📖 Описание', {
-      fontSize: `${fs}px`, color: UI.woodHi, fontStyle: 'bold'
+      fontSize: `${fs}px`, color: UI.css.woodHi, fontStyle: 'bold'
     }));
     y += fs + 4;
     const desc = scene.add.text(contentLeft, y, lore.description || '', {
-      fontSize: `${smallFs}px`, color: UI.textDark, wordWrap: { width: wrapW }, lineSpacing
+      fontSize: `${smallFs}px`, color: UI.css.textDark, wordWrap: { width: wrapW }, lineSpacing
     });
     this.add(desc);
     y += desc.height + 10;
 
     this.add(scene.add.text(contentLeft, y, '🌿 Среда обитания', {
-      fontSize: `${fs}px`, color: UI.woodHi, fontStyle: 'bold'
+      fontSize: `${fs}px`, color: UI.css.woodHi, fontStyle: 'bold'
     }));
     y += fs + 4;
     const habit = scene.add.text(contentLeft, y, lore.habitat || '', {
-      fontSize: `${smallFs}px`, color: UI.textSecondary, wordWrap: { width: wrapW }, lineSpacing
+      fontSize: `${smallFs}px`, color: UI.css.textSecondary, wordWrap: { width: wrapW }, lineSpacing
     });
     this.add(habit);
     y += habit.height + 10;
 
     this.add(scene.add.text(contentLeft, y, '🌙 Легенда', {
-      fontSize: `${fs}px`, color: UI.woodHi, fontStyle: 'bold'
+      fontSize: `${fs}px`, color: UI.css.woodHi, fontStyle: 'bold'
     }));
     y += fs + 4;
     const legend = scene.add.text(contentLeft, y, lore.legend || '', {
-      fontSize: `${smallFs}px`, color: UI.textSecondary, wordWrap: { width: wrapW }, lineSpacing
+      fontSize: `${smallFs}px`, color: UI.css.textSecondary, wordWrap: { width: wrapW }, lineSpacing
     });
     this.add(legend);
     y += legend.height + 10;
@@ -179,7 +179,7 @@ export class PlantDetailOverlay extends Phaser.GameObjects.Container {
       btnHit.on('pointerdown', openMutations);
     } else if (y < panelY + panelH / 2 - 30) {
       this.add(scene.add.text(panelX, y, lore.rarityNote || '', {
-        fontSize: `${smallFs - 1}px`, color: UI.textMuted, fontStyle: 'italic',
+        fontSize: `${smallFs - 1}px`, color: UI.css.textMuted, fontStyle: 'italic',
         align: 'center', wordWrap: { width: wrapW }
       }).setOrigin(0.5, 0));
     }

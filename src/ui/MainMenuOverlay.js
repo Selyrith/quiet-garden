@@ -35,7 +35,7 @@ export class MainMenuOverlay extends Phaser.GameObjects.Container {
     this.add(this.panel);
 
     this.title = scene.add.text(panelX, panelY - panelH / 2 + 20, 'Меню', {
-      fontSize: `${DS.font.size.xl}px`, color: UI.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle
+      fontSize: `${DS.font.size.xl}px`, color: UI.css.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle
     }).setOrigin(0.5, 0);
     this.add(this.title);
 
@@ -50,7 +50,7 @@ export class MainMenuOverlay extends Phaser.GameObjects.Container {
       panelX + panelW / 2 - 24,
       panelY - panelH / 2 + 24,
       '✕',
-      { fontSize: `${DS.font.size.xl}px`, color: UI.textDark, fontStyle: 'bold' }
+      { fontSize: `${DS.font.size.xl}px`, color: UI.css.textDark, fontStyle: 'bold' }
     ).setOrigin(0.5);
     closeHit.on('pointerdown', () => this.destroy());
     this.add([closeHit, closeBtn]);

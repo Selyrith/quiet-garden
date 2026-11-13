@@ -123,13 +123,13 @@ export class BookOverlay extends Phaser.GameObjects.Container {
 
     this.chaptersHit = scene.add.rectangle(leftTabX, tabY, tabW, 40, 0x000000, 0.001).setInteractive({ useHandCursor: true });
     this.chaptersBtn = scene.add.text(leftTabX, tabY, '🌿 Главы', {
-      fontSize: `${DS.font.size.base}px`, color: UI.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle
+      fontSize: `${DS.font.size.base}px`, color: UI.css.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle
     }).setOrigin(0.5);
     this.chaptersHit.on('pointerdown', () => { this.viewMode = 'chapters'; this.activeChapter = null; this.page = 0; this.renderPage(); });
 
     this.plantsHit = scene.add.rectangle(rightTabX, tabY, tabW, 40, 0x000000, 0.001).setInteractive({ useHandCursor: true });
     this.plantsBtn = scene.add.text(rightTabX, tabY, '📖 Растения', {
-      fontSize: `${DS.font.size.base}px`, color: UI.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle
+      fontSize: `${DS.font.size.base}px`, color: UI.css.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle
     }).setOrigin(0.5);
     this.plantsHit.on('pointerdown', () => { this.viewMode = 'plants'; this.activeChapter = null; this.page = 0; this.renderPage(); });
 

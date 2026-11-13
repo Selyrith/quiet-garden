@@ -62,6 +62,11 @@ export class InventoryBar {
 
   update(inventory, activeSeedId) {
     this.activeSeedId = activeSeedId;
+    // Держим последний инвентарь на экземпляре: обработчики слотов создаются
+    // в createSeedSlot, где `inventory` ВНЕ области видимости. Раньше там стоял
+    // this.update(inventory, seedId) — при тапе по семени это бросало
+    // ReferenceError, и выбор семени (а с ним и онбординг) не работал.
+    this.inventory = inventory || {};
     this.slotsContainer.removeAll(true);
 
     // Подсказка внизу экрана
@@ -302,7 +307,7 @@ export class InventoryBar {
         return;
       }
       this.scene.selectedSeedId = seedId;
-      this.update(inventory, seedId);
+      this.update(this.inventory, seedId);
       if (this.scene.sound) this.scene.sound.buy();
 
       if (this.scene.onboarding?.active && this.scene.onboarding.step === 1) {

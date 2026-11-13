@@ -1,4 +1,38 @@
+/**
+ * Токены UI в ДВУХ видах.
+ *
+ * `UI.woodDark` и т.п. — числа (0x...) для fillStyle/lineStyle в Graphics.
+ * `UI.css.woodDark` — CSS-строки ('#...') для свойства `color` у Text.
+ *
+ * Раньше в `color:` подставляли числовой токен: Phaser получал 6048314 вместо
+ * '#5c4a3a' и текст становился невидимым. Именно из-за этого пропадали
+ * описания ролей и часть подписей.
+ */
+const UI_HEX = {
+  woodDark: 0x5c4a3a,
+  woodMid: 0x8e7b63,
+  woodLight: 0xd8cebd,
+  woodHi: 0xc9a884,
+  parchment: 0xf8f4ee,
+  textDark: 0x5c4a3a,
+  textLight: 0xffffff,
+  textSecondary: 0x8e7b63,
+  textMuted: 0x8e7b63,
+  gold: 0xd8a494,
+  goldHi: 0xe8c3a8,
+  leaf: 0xa8d593,
+  leafDark: 0x9bc48c,
+  error: 0xcb8a6b,
+  btnPrimary: 0xd8a494,
+  btnPrimaryHi: 0xc9a884,
+  btnSecondary: 0xb8c4a6,
+};
+
+const toCss = (hex) => '#' + hex.toString(16).padStart(6, '0');
+
 export const UI = {
+  /** CSS-строки для свойства `color` у Text. */
+  css: Object.fromEntries(Object.entries(UI_HEX).map(([k, v]) => [k, toCss(v)])),
   // Палитра (природа, мягкие земляные тона)
   woodDark: 0x5c4a3a,
   woodMid: 0x8e7b63,
@@ -8,6 +42,7 @@ export const UI = {
   textDark: 0x5c4a3a,
   textLight: 0xffffff,
   textSecondary: 0x8e7b63,
+  textMuted: 0x8e7b63,
   gold: 0xd8a494,
   goldHi: 0xe8c3a8,
   leaf: 0xa8d593,

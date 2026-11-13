@@ -18,7 +18,7 @@ export class PackOpeningOverlay extends Phaser.GameObjects.Container {
     this.add(this.bg);
 
     this.title = scene.add.text(cam.width / 2, cam.height / 2 - 120, 'Открываем пак...', {
-      fontSize: `${DS.font.size.xl}px`, color: UI.textLight, fontStyle: 'bold', fontFamily: UI.fontTitle
+      fontSize: `${DS.font.size.xl}px`, color: UI.css.textLight, fontStyle: 'bold', fontFamily: UI.fontTitle
     }).setOrigin(0.5);
     this.add(this.title);
 
@@ -51,7 +51,7 @@ export class PackOpeningOverlay extends Phaser.GameObjects.Container {
       content.add(g);
 
       const nameText = scene.add.text(0, -45, plant.name, {
-        fontSize: '10px', color: UI.textDark, align: 'center', wordWrap: { width: 70 }
+        fontSize: '10px', color: UI.css.textDark, align: 'center', wordWrap: { width: 70 }
       }).setOrigin(0.5);
       content.add(nameText);
 
