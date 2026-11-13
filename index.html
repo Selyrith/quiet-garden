@@ -60,6 +60,20 @@
       z-index: 10;
     }
 
+    /*
+     * DOM-слой Phaser (в нём живут поля ввода: ответ питомцу, записка у
+     * указателя). Phaser добавляет этот div в родителя РАНЬШЕ canvas, поэтому
+     * без z-index слой оказывается ПОД игрой — окно выглядит пустым, а поле
+     * ввода не видно и не получает фокус. Поднимаем над canvas.
+     */
+    #game-container > div {
+      z-index: 20;
+    }
+    #game-container > canvas {
+      position: relative;
+      z-index: 1;
+    }
+
     body::before {
       content: "";
       position: fixed;

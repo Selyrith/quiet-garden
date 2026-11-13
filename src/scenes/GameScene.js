@@ -549,8 +549,10 @@ export default class GameScene extends Phaser.Scene {
     if (this.petModal) return;
     const w = this.scale.width;
     const h = this.scale.height;
-    const panelW = Math.min(360, w - 40);
-    const panelH = 440;
+    const panelW = Math.min(360, w - 32);
+    // Панель подстраивается под экран: на низком телефоне 440 не влезали,
+    // и содержимое уходило за нижний край — окно выглядело пустым.
+    const panelH = Math.min(460, h - 48);
     const px = w / 2 - panelW / 2;
     const py = h / 2 - panelH / 2;
 

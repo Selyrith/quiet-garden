@@ -87,7 +87,10 @@ function startGame() {
         width: window.innerWidth,
         height: window.innerHeight
       },
-      dom: { createContainer: true },
+      // pointerEvents: 'auto' — контейнер DOM-слоя по умолчанию получает
+      // 'none', и тогда поля ввода (ответ питомцу, записка у указателя)
+      // не реагируют на тап: слой «есть», но ввода нет.
+      dom: { createContainer: true, pointerEvents: 'auto' },
       scene: [GameScene, PauseScene],
       callbacks: {
         preBoot: (g) => {
