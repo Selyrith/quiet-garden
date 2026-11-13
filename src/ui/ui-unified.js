@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { DS } from './DesignSystem.js';
+import { MOBILE, fitTapTarget } from './MobileScale.js';
 
 export const UNIFIED = {
   // Единый цвет для ВСЕХ кнопок и плашек
@@ -7,9 +8,19 @@ export const UNIFIED = {
   colorHi: 0xe8c3a8, // наведение (светлее)
   colorLo: 0xc9a884, // нажатие (темнее)
   colorDisabledAlpha: 0.4,
+
+  // ИЕРАРХИЯ. Раньше все кнопки были одного терракотового цвета, и глазу
+  // не за что было зацепиться: интерфейс «сливался в одно».
+  // Теперь три уровня: главное действие — насыщенный акцент,
+  // второстепенное — контур, третичное — без заливки.
+  primary: 0xc9885f,
+  primaryHi: 0xd8a494,
+  primaryLo: 0xb0734d,
+  outline: 0xffffff,
+  outlineText: '#5c4a3a',
   text: '#ffffff',
-  minTouch: 48,
-  radius: 16,
+  minTouch: MOBILE.tap,
+  radius: MOBILE.radius,
 
   // Вторичный цвет для закрытия / отклонения (ниже по иерархии)
   secondary: 0x8e7b63,
@@ -27,6 +38,7 @@ export const UNIFIED = {
  */
 export function createUnifiedButton(scene, x, y, w, h, label, onClick, {
   secondary = false,
+  primary = false,
   disabled = false,
   fontSize = '15px',
   fontStyle = 'bold',
@@ -36,10 +48,22 @@ export function createUnifiedButton(scene, x, y, w, h, label, onClick, {
   // рисовались поверх тостов и подсказок. По умолчанию — уровень оверлеев.
   depth = DS.overlay.shop,
 } = {}) {
-  const baseColor = secondary ? UNIFIED.secondary : UNIFIED.color;
-  const textColor = secondary ? UNIFIED.secondaryText : UNIFIED.text;
+  // Вариант primary — единственный «яркий» акцент на экране.
+  // Остальные кнопки остаются приглушёнными, чтобы был контраст иерархии.
+  const baseColor = primary ? UNIFIED.primary : secondary ? UNIFIED.secondary : UNIFIED.color;
+  const textColor = primary ? '#ffffff' : secondary ? UNIFIED.secondaryText : UNIFIED.text;
 
-  // Обёртка контейнера
+  // Обёртка контейнера.
+  //
+  // ВАЖНО про ввод. Phaser обрабатывает только САМЫЙ ВЕРХНИЙ объект под
+  // пальцем (InputPlugin.topOnly = true по умолчанию), а порядок считает
+  // по позиции в renderList камеры. Когда кнопку делают через
+  // scene.add.container(...) и потом add() в контейнер оверлея, её depth
+  // остаётся прежним — и она может оказаться НИЖЕ фоновой панели оверлея.
+  // Тогда клик достаётся панели, а кнопка выглядит рабочей, но не нажимается.
+  //
+  // Поэтому: контейнер кнопки получает ту же глубину, что и оверлей,
+  // а внутри оверлея кнопка всегда добавляется ПОСЛЕ фона.
   const container = scene.add.container(x, y);
   container.setDepth(depth);
 
@@ -58,16 +82,17 @@ export function createUnifiedButton(scene, x, y, w, h, label, onClick, {
     if (isDisabled) {
       fillColor = baseColor;
       alpha = UNIFIED.colorDisabledAlpha;
-      textCol = '#aaaaaa';
+      textCol = '#a89e94';
     } else if (isPressed) {
-      fillColor = UNIFIED.colorLo;
+      fillColor = primary ? UNIFIED.primaryLo : UNIFIED.colorLo;
     } else if (isHover) {
-      fillColor = UNIFIED.colorHi;
+      fillColor = primary ? UNIFIED.primaryHi : UNIFIED.colorHi;
     }
 
     g.fillStyle(fillColor, alpha);
     g.fillRoundedRect(-w / 2, -h / 2, w, h, UNIFIED.radius);
-    g.lineStyle(2, UNIFIED.colorLo, 0.6);
+    // Обводка: у primary — светлая (отделяет от фона), у остальных — мягкая.
+    g.lineStyle(2, primary ? 0xffffff : UNIFIED.colorLo, primary ? 0.55 : 0.6);
     g.strokeRoundedRect(-w / 2, -h / 2, w, h, UNIFIED.radius);
 
     // Блик сверху (кроме pressed/disabled)
@@ -85,9 +110,11 @@ export function createUnifiedButton(scene, x, y, w, h, label, onClick, {
   }).setOrigin(0.5);
   container.add(text);
 
-  // Тач-таргет: минимум 44×44, бинтим на весь контейнер
-  const touchW = Math.max(w, minTouch);
-  const touchH = Math.max(h, minTouch);
+  // Тач-таргет по мобильным нормам (48dp), но без раздувания: если кнопка
+  // шире — берём её ширину, иначе добиваем до 48.
+  const fitted = fitTapTarget(w, h);
+  const touchW = Math.max(w, minTouch, fitted.w);
+  const touchH = Math.max(h, minTouch, fitted.h);
   const hit = scene.add.rectangle(0, 0, touchW, touchH, 0x000000, 0.001);
   hit.setInteractive({ useHandCursor: !disabled });
   container.add(hit);

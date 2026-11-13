@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { UI, drawPanel } from './ui-theme.js';
 import { UNIFIED, createUnifiedButton } from './ui-unified.js';
 import { DS } from './DesignSystem.js';
+import { MOBILE } from './MobileScale.js';
 import { UPGRADES, getUpgradeCost } from '../../shared/upgrades.js';
 
 export class UpgradesOverlay extends Phaser.GameObjects.Container {
@@ -95,9 +96,10 @@ export class UpgradesOverlay extends Phaser.GameObjects.Container {
         const btnX = x + panelW / 2 - 60;
         const btnY = y + cardH / 2;
 
-        const btn = createUnifiedButton(this.scene, btnX, btnY, 80, 36,
+        const btn = createUnifiedButton(this.scene, btnX, btnY, 88, 44,
           `🪙 ${cost}`, () => this.buy(u.id),
-          { disabled: !canBuy, fontSize: '12px' });
+          { disabled: !canBuy, primary: canBuy, fontSize: `${MOBILE.font.caption}px`, depth: DS.overlay.upgrades + 2 });
+        btn.setDepth(DS.overlay.upgrades + 2);
         this.cardsContainer.add(btn);
 
         if (!canBuy) {

@@ -4,6 +4,7 @@ import { MUTATION_COUNT, getMutation } from '../../shared/mutations.js';
 import { drawPixelPlant } from './PixelArt.js';
 import { UNIFIED } from './ui-unified.js';
 import { DS } from './DesignSystem.js';
+import { MOBILE } from './MobileScale.js';
 import { UI, drawPanel } from './ui-theme.js';
 
 const MUT_PER_PAGE = 20;
@@ -29,7 +30,7 @@ export class MutationsOverlay extends Phaser.GameObjects.Container {
     const panelW = Math.min(360, cam.width - 20);
     const panelH = Math.min(420, cam.height - 40);
     this.panel = scene.add.graphics();
-    drawPanel(this.panel, cam.width / 2 - panelW / 2, cam.height / 2 - panelH / 2, panelW, panelH, DS.radius.lg, true);
+    drawPanel(this.panel, cam.width / 2 - panelW / 2, cam.height / 2 - panelH / 2, panelW, panelH, MOBILE.radiusPanel, true);
     this.add(this.panel);
 
     const plant = getPlant(plantSeed);
@@ -38,7 +39,9 @@ export class MutationsOverlay extends Phaser.GameObjects.Container {
     }).setOrigin(0.5, 0);
     this.add(this.title);
 
-    const closeHitArea = scene.add.rectangle(cam.width / 2 + panelW / 2 - 24, cam.height / 2 - panelH / 2 + 24, UNIFIED.minTouch, UNIFIED.minTouch, UNIFIED.color).setInteractive({ useHandCursor: true });
+    const closeHitArea = scene.add.rectangle(cam.width / 2 + panelW / 2 - 24, cam.height / 2 - panelH / 2 + 24, UNIFIED.minTouch, UNIFIED.minTouch, UNIFIED.color)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(DS.overlay.detail + 4);
     closeHitArea.setStrokeStyle(2, UNIFIED.colorHi);
     const closeBtn = scene.add.text(cam.width / 2 + panelW / 2 - 24, cam.height / 2 - panelH / 2 + 12, '✕', {
       fontSize: `${DS.font.size.lg}px`, color: UI.textDark, fontStyle: 'bold'
@@ -56,12 +59,12 @@ export class MutationsOverlay extends Phaser.GameObjects.Container {
 
     this.prevBtn = scene.add.text(cam.width / 2 - panelW / 2 + 30, cam.height / 2 + panelH / 2 - 24, '◀', {
       fontSize: `${DS.font.size.lg}px`, color: UI.textMuted
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(DS.overlay.detail + 4);
     this.add(this.prevBtn);
 
     this.nextBtn = scene.add.text(cam.width / 2 + panelW / 2 - 30, cam.height / 2 + panelH / 2 - 24, '▶', {
       fontSize: `${DS.font.size.lg}px`, color: UI.textDark
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(DS.overlay.detail + 4);
     this.add(this.nextBtn);
 
     this.prevBtn.on('pointerdown', () => this.changePage(-1));

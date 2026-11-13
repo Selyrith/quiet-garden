@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { UNIFIED, createUnifiedButton } from './ui-unified.js';
 import { DS } from './DesignSystem.js';
+import { MOBILE } from './MobileScale.js';
 import { UI, drawPanel } from './ui-theme.js';
 
 export class GenderSelectionOverlay extends Phaser.GameObjects.Container {
@@ -25,7 +26,7 @@ export class GenderSelectionOverlay extends Phaser.GameObjects.Container {
     const panelY = cam.height / 2;
 
     this.panel = scene.add.graphics();
-    drawPanel(this.panel, panelX - panelW / 2, panelY - panelH / 2, panelW, panelH, DS.radius.lg, true);
+    drawPanel(this.panel, panelX - panelW / 2, panelY - panelH / 2, panelW, panelH, MOBILE.radiusPanel, true);
     this.panel.setInteractive(new Phaser.Geom.Rectangle(panelX - panelW / 2, panelY - panelH / 2, panelW, panelH), Phaser.Geom.Rectangle.Contains);
     this.add(this.panel);
 
@@ -98,7 +99,7 @@ export class GenderSelectionOverlay extends Phaser.GameObjects.Container {
     this.femaleImg.on('pointerdown', () => select('female'));
 
     // Кнопка подтверждения
-    this.confirmBtn = createUnifiedButton(scene, panelX, panelY + panelH / 2 - 55, 200, 48, 'Готово', () => {
+    this.confirmBtn = createUnifiedButton(scene, panelX, panelY + panelH / 2 - 55, 200, MOBILE.buttonH, 'Готово', () => {
       // Сохраняем выбор в registry и localStorage
       scene.registry.set('playerGender', selectedGender);
       try { localStorage.setItem('qg_player_gender', selectedGender); } catch {}
@@ -107,6 +108,7 @@ export class GenderSelectionOverlay extends Phaser.GameObjects.Container {
       this.destroy();
       if (typeof onSelect === 'function') onSelect(selectedGender);
     });
+    this.confirmBtn.setDepth(DS.overlay.gender + 2);
     this.add(this.confirmBtn);
 
     // Выбираем мужского по умолчанию

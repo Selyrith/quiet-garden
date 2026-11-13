@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { ROLES } from '../../shared/roles.js';
 import { UNIFIED } from './ui-unified.js';
 import { DS } from './DesignSystem.js';
+import { MOBILE } from './MobileScale.js';
 import { UI, drawPanel } from './ui-theme.js';
 
 export class RolesOverlay extends Phaser.GameObjects.Container {
@@ -23,7 +24,7 @@ export class RolesOverlay extends Phaser.GameObjects.Container {
     const panelW = Math.min(340, cam.width - 20);
     const panelH = Math.min(460, cam.height - 20);
     this.panel = scene.add.graphics();
-    drawPanel(this.panel, cam.width / 2 - panelW / 2, cam.height / 2 - panelH / 2, panelW, panelH, DS.radius.lg, true);
+    drawPanel(this.panel, cam.width / 2 - panelW / 2, cam.height / 2 - panelH / 2, panelW, panelH, MOBILE.radiusPanel, true);
     this.add(this.panel);
 
     const titleText = currentRole ? 'Сменить роль' : 'Выберите роль';
@@ -39,7 +40,9 @@ export class RolesOverlay extends Phaser.GameObjects.Container {
     ).setOrigin(0.5, 0));
 
     if (currentRole) {
-      const closeHitArea = scene.add.rectangle(cam.width / 2 + panelW / 2 - 24, cam.height / 2 - panelH / 2 + 24, UNIFIED.minTouch, UNIFIED.minTouch, UNIFIED.color).setInteractive({ useHandCursor: true });
+      const closeHitArea = scene.add.rectangle(cam.width / 2 + panelW / 2 - 24, cam.height / 2 - panelH / 2 + 24, UNIFIED.minTouch, UNIFIED.minTouch, UNIFIED.color)
+        .setInteractive({ useHandCursor: true })
+        .setDepth(DS.overlay.roles + 2);
       closeHitArea.setStrokeStyle(2, UNIFIED.colorHi);
       const closeBtn = scene.add.text(
         cam.width / 2 + panelW / 2 - 24,
@@ -49,7 +52,9 @@ export class RolesOverlay extends Phaser.GameObjects.Container {
       closeHitArea.on('pointerdown', () => this.destroy());
       this.add([closeHitArea, closeBtn]);
     } else {
-      const skipHit = scene.add.rectangle(cam.width / 2, cam.height / 2 + panelH / 2 - 24, 100, 44, 0x000000, 0.001).setInteractive({ useHandCursor: true });
+      const skipHit = scene.add.rectangle(cam.width / 2, cam.height / 2 + panelH / 2 - 24, 140, MOBILE.tap, 0x000000, 0.001)
+        .setInteractive({ useHandCursor: true })
+        .setDepth(DS.overlay.roles + 2);
       const skipBtn = scene.add.text(
         cam.width / 2, cam.height / 2 + panelH / 2 - 20, 'Пропустить',
         { fontSize: `${DS.font.size.sm}px`, color: UI.textDark, fontStyle: 'bold' }
@@ -82,7 +87,7 @@ export class RolesOverlay extends Phaser.GameObjects.Container {
         isCurrent ? UI.parchment : 0xeee5da, 0.98
       ).setStrokeStyle(2, isCurrent ? UI.woodHi : UI.woodLight);
 
-      card.setInteractive({ useHandCursor: true });
+      card.setInteractive({ useHandCursor: true }).setDepth(DS.overlay.roles + 1);
 
       card.on('pointerdown', () => {
         this.scene.socket?.emit('role-set', { roleId: role.id });

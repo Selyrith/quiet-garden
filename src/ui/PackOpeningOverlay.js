@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { getPlant } from '../../shared/plants.js';
 import { drawPixelPlant } from './PixelArt.js';
 import { DS } from './DesignSystem.js';
+import { MOBILE } from './MobileScale.js';
 import { UNIFIED } from './ui-unified.js';
 import { UI } from './ui-theme.js';
 
@@ -91,12 +92,15 @@ export class PackOpeningOverlay extends Phaser.GameObjects.Container {
       const btnW = 160;
       const btnH = 44;
 
-      const btnHit = scene.add.rectangle(btnX, btnY, Math.max(btnW, 44), Math.max(btnH, 44), 0x000000, 0.001).setInteractive({ useHandCursor: true });
-      const btn = scene.add.rectangle(btnX, btnY, btnW, btnH, 0xd8a494)
-        .setStrokeStyle(2, 0xffffff);
+      const btnHit = scene.add.rectangle(btnX, btnY, Math.max(btnW, MOBILE.tap), Math.max(btnH, MOBILE.tap), 0x000000, 0.001)
+        .setInteractive({ useHandCursor: true })
+        .setDepth(DS.overlay.pack + 2);
+      const btn = scene.add.rectangle(btnX, btnY, btnW, btnH, UNIFIED.color, 1)
+        .setStrokeStyle(2, 0xffffff, 0.8)
+        .setDepth(DS.overlay.pack + 3);
       const txt = scene.add.text(btnX, btnY, 'Отлично!', {
-        fontSize: `${DS.font.size.base}px`, color: UNIFIED.text, fontStyle: 'bold'
-      }).setOrigin(0.5);
+        fontSize: `${MOBILE.font.label}px`, color: UNIFIED.text, fontStyle: 'bold'
+      }).setOrigin(0.5).setDepth(DS.overlay.pack + 4);
 
       const closeAction = () => this.destroy();
       btnHit.on('pointerdown', closeAction);

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { UNIFIED, createUnifiedButton } from './ui-unified.js';
 import { DS } from './DesignSystem.js';
+import { MOBILE } from './MobileScale.js';
 import { UI, drawPanel } from './ui-theme.js';
 
 export class MainMenuOverlay extends Phaser.GameObjects.Container {
@@ -29,7 +30,7 @@ export class MainMenuOverlay extends Phaser.GameObjects.Container {
     const panelY = cam.height / 2;
 
     this.panel = scene.add.graphics();
-    drawPanel(this.panel, panelX - panelW / 2, panelY - panelH / 2, panelW, panelH, DS.radius.lg, true);
+    drawPanel(this.panel, panelX - panelW / 2, panelY - panelH / 2, panelW, panelH, MOBILE.radiusPanel, true);
     this.panel.setInteractive(new Phaser.Geom.Rectangle(panelX - panelW / 2, panelY - panelH / 2, panelW, panelH), Phaser.Geom.Rectangle.Contains);
     this.add(this.panel);
 
@@ -55,14 +56,16 @@ export class MainMenuOverlay extends Phaser.GameObjects.Container {
     this.add([closeHit, closeBtn]);
 
     // Сетка кнопок (2 колонки) — все единым цветом
+    // У главного действия — акцентный вариант. Раньше все семь кнопок были
+    // одинакового цвета, и меню превращалось в однородную плитку без иерархии.
     const items = [
-      { label: '📖 Книга', action: 'onBook' },
+      { label: '📖 Книга', action: 'onBook', primary: true },
       { label: '⭐ Улучшения', action: 'onUpgrades' },
       { label: '🎯 Цели', action: 'onGoals' },
       { label: '🎭 Роли', action: 'onRoles' },
       { label: '🛒 Магазин', action: 'onShop' },
-      { label: '⏸ Пауза', action: 'onPause' },
       { label: '⚙ Настройки', action: 'onSettings' },
+      { label: '⏸ Пауза', action: 'onPause', secondary: true },
     ];
 
     const cols = 2;
@@ -90,7 +93,10 @@ export class MainMenuOverlay extends Phaser.GameObjects.Container {
         const fn = this.callbacks[item.action];
         if (typeof fn === 'function') fn();
         else this.destroy();
-      });
+      }, { depth: DS.overlay.menu + 2, primary: item.primary, secondary: item.secondary });
+      // Кнопка уходит ВНУТРЬ контейнера оверлея: без явной глубины она
+      // оказывалась ниже фоновой панели и не нажималась (topOnly).
+      btn.setDepth(DS.overlay.menu + 2);
       this.add(btn);
     });
   }

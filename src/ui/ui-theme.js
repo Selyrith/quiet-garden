@@ -40,17 +40,24 @@ export const UI = {
   fontMono: 'monospace'
 };
 
-export function drawPanel(g, x, y, w, h, radius = 16, isParchment = true) {
-  g.fillStyle(0x000000, 0.25);
-  g.fillRoundedRect(x + 4, y + 6, w, h, radius); // Тень
-  
+export function drawPanel(g, x, y, w, h, radius = 24, isParchment = true) {
+  // Многослойная тень вместо одной плоской: именно она отделяет панель
+  // от игрового фона. Без неё панели «сливались» с травой и грядками.
+  g.fillStyle(0x1e140f, 0.06);
+  g.fillRoundedRect(x + 2, y + 10, w, h, radius);
+  g.fillStyle(0x1e140f, 0.10);
+  g.fillRoundedRect(x + 1, y + 5, w, h, radius);
+
   if (isParchment) {
-    g.fillStyle(UI.parchment, 0.98);
+    // Панель: тёплый пергамент + светлая кромка сверху (объём).
+    g.fillStyle(UI.parchment, 1);
     g.fillRoundedRect(x, y, w, h, radius);
-    g.lineStyle(2.5, UI.woodLight, 1);
+    // Верхний блик — «лист бумаги» лежит на столе.
+    g.fillStyle(0xffffff, 0.55);
+    g.fillRoundedRect(x + 3, y + 3, w - 6, Math.min(28, h / 3), radius - 3);
+    // Контур: заметный, но не чёрный.
+    g.lineStyle(2, UI.woodLight, 1);
     g.strokeRoundedRect(x, y, w, h, radius);
-    g.lineStyle(1, UI.woodMid, 0.4);
-    g.strokeRoundedRect(x + 4, y + 4, w - 8, h - 8, radius - 2);
   } else {
     g.fillStyle(UI.woodDark, 0.98);
     g.fillRoundedRect(x, y, w, h, radius);

@@ -4,6 +4,7 @@ import { drawPixelPlant } from './PixelArt.js';
 import { MutationsOverlay } from './MutationsOverlay.js';
 import { UNIFIED, createUnifiedButton } from './ui-unified.js';
 import { DS } from './DesignSystem.js';
+import { MOBILE } from './MobileScale.js';
 import { UI, drawPanel } from './ui-theme.js';
 
 export class PlantDetailOverlay extends Phaser.GameObjects.Container {
@@ -36,7 +37,7 @@ export class PlantDetailOverlay extends Phaser.GameObjects.Container {
     const panelX = cam.width / 2;
     const panelY = cam.height / 2;
     this.panel = scene.add.graphics();
-    drawPanel(this.panel, panelX - panelW / 2, panelY - panelH / 2, panelW, panelH, DS.radius.lg, true);
+    drawPanel(this.panel, panelX - panelW / 2, panelY - panelH / 2, panelW, panelH, MOBILE.radiusPanel, true);
     this.panel.setInteractive(new Phaser.Geom.Rectangle(panelX - panelW / 2, panelY - panelH / 2, panelW, panelH), Phaser.Geom.Rectangle.Contains);
     this.add(this.panel);
 
@@ -103,16 +104,22 @@ export class PlantDetailOverlay extends Phaser.GameObjects.Container {
           fontSize: `${smallFs}px`, color: UI.textMuted, align: 'center', lineSpacing: 4
         }).setOrigin(0.5, 0));
 
-      const btnY = panelY + panelH / 2 - 40;
-      const btnHit = scene.add.rectangle(panelX, btnY, panelW - 60, 44, 0x000000, 0.001).setInteractive({ useHandCursor: true });
+      const btnY = panelY + panelH / 2 - 44;
+      // Кнопка и её тач-таргет — ОДИН объект с явной глубиной.
+      // Раньше невидимый прямоугольник лежал под кнопкой и перехватывал клик
+      // (Phaser отдаёт его только верхнему объекту), а у самой кнопки не было
+      // общей глубины с остальным содержимым панели.
+      const btnHit = scene.add.rectangle(panelX, btnY, panelW - 56, MOBILE.buttonH, 0x000000, 0.001)
+        .setInteractive({ useHandCursor: true })
+        .setDepth(DS.overlay.detail + 2);
       this.add(btnHit);
-      const btn = scene.add.rectangle(panelX, btnY, panelW - 60, 40, 0xd8a494)
-        .setStrokeStyle(1, 0xc9a884, 0.4).setInteractive({ useHandCursor: true });
-      btn.on('pointerdown', () => this.destroy());
+      const btn = scene.add.rectangle(panelX, btnY, panelW - 56, MOBILE.buttonH, UNIFIED.color, 1)
+        .setStrokeStyle(1.5, UNIFIED.colorLo, 0.7)
+        .setDepth(DS.overlay.detail + 3);
       this.add(btn);
       this.add(scene.add.text(panelX, btnY, 'Понятно', {
-        fontSize: '14px', color: '#ffffff', fontStyle: 'bold'
-      }).setOrigin(0.5));
+        fontSize: `${MOBILE.font.label}px`, color: '#ffffff', fontStyle: 'bold'
+      }).setOrigin(0.5).setDepth(DS.overlay.detail + 4));
       btnHit.on('pointerdown', () => this.destroy());
       return;
     }
@@ -153,23 +160,23 @@ export class PlantDetailOverlay extends Phaser.GameObjects.Container {
     y += legend.height + 10;
 
     if (mutCount > 0) {
-      const btnY = panelY + panelH / 2 - 40;
-      const btnHit = scene.add.rectangle(panelX, btnY, panelW - 60, 44, 0x000000, 0.001).setInteractive({ useHandCursor: true });
-      this.add(btnHit);
-      const btn = scene.add.rectangle(panelX, btnY, panelW - 60, 40, 0xd8a494)
-        .setStrokeStyle(1, 0xc9a884).setInteractive({ useHandCursor: true });
-      btn.on('pointerdown', () => {
+      const btnY = panelY + panelH / 2 - 44;
+      const openMutations = () => {
         this.destroy();
         new MutationsOverlay(scene, seed, collection);
-      });
+      };
+      const btnHit = scene.add.rectangle(panelX, btnY, panelW - 56, MOBILE.buttonH, 0x000000, 0.001)
+        .setInteractive({ useHandCursor: true })
+        .setDepth(DS.overlay.detail + 2);
+      this.add(btnHit);
+      const btn = scene.add.rectangle(panelX, btnY, panelW - 56, MOBILE.buttonH, UNIFIED.primary, 1)
+        .setStrokeStyle(1.5, 0xffffff, 0.5)
+        .setDepth(DS.overlay.detail + 3);
       this.add(btn);
       this.add(scene.add.text(panelX, btnY, `✨ Мутации: ${mutCount}`, {
-        fontSize: '14px', color: '#ffffff', fontStyle: 'bold'
-      }).setOrigin(0.5));
-      btnHit.on('pointerdown', () => {
-        this.destroy();
-        new MutationsOverlay(scene, seed, collection);
-      });
+        fontSize: `${MOBILE.font.label}px`, color: '#ffffff', fontStyle: 'bold'
+      }).setOrigin(0.5).setDepth(DS.overlay.detail + 4));
+      btnHit.on('pointerdown', openMutations);
     } else if (y < panelY + panelH / 2 - 30) {
       this.add(scene.add.text(panelX, y, lore.rarityNote || '', {
         fontSize: `${smallFs - 1}px`, color: UI.textMuted, fontStyle: 'italic',

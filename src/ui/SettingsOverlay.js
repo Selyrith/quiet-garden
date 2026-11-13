@@ -1,5 +1,7 @@
 import { createUnifiedButton, createUnifiedToggle } from './ui-unified.js';
 import { DS } from './DesignSystem.js';
+import { MOBILE } from './MobileScale.js';
+import { UI } from './ui-theme.js';
 
 export class SettingsOverlay {
   constructor(scene) {
@@ -46,10 +48,14 @@ export class SettingsOverlay {
     }).setOrigin(0.5);
     this.panel.add(title);
 
-    const closeBtn = scene.add.text(panelW / 2 - 20, -panelH / 2 + 20, '✕', {
-      fontSize: '18px', color: '#8e7b63'
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    closeBtn.on('pointerdown', () => this.destroy());
+    // Закрытие: тач-таргет 48×48, явная глубина внутри контейнера.
+    const closeBtn = scene.add.text(panelW / 2 - 28, -panelH / 2 + 28, '✕', {
+      fontSize: `${MOBILE.font.title}px`, color: UI.textMuted, fontStyle: 'bold'
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(DS.overlay.settings + 3);
+    const closeHit = scene.add.rectangle(panelW / 2 - 28, -panelH / 2 + 28, MOBILE.tap, MOBILE.tap, 0x000000, 0.001)
+      .setInteractive({ useHandCursor: true }).setDepth(DS.overlay.settings + 2);
+    closeHit.on('pointerdown', () => this.destroy());
+    this.panel.add(closeHit);
     this.panel.add(closeBtn);
 
     let y = -panelH / 2 + 70;
@@ -98,7 +104,9 @@ export class SettingsOverlay {
     y += 55;
 
     // --- Кнопка закрытия (единый цвет) ---
-    const closeBottomBtn = createUnifiedButton(scene, 0, y, panelW - 48, 44, 'Закрыть', () => this.destroy());
+    const closeBottomBtn = createUnifiedButton(scene, 0, y, panelW - 48, MOBILE.buttonH, 'Закрыть', () => this.destroy(),
+      { depth: DS.overlay.settings + 2 });
+    closeBottomBtn.setDepth(DS.overlay.settings + 2);
     this.panel.add(closeBottomBtn);
   }
 

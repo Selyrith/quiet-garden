@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { UI, drawPanel } from './ui-theme.js';
 import { UNIFIED, createUnifiedButton } from './ui-unified.js';
 import { DS } from './DesignSystem.js';
+import { MOBILE } from './MobileScale.js';
 import { PACKS } from '../../shared/packs.js';
 
 export class ShopOverlay extends Phaser.GameObjects.Container {
@@ -81,7 +82,8 @@ export class ShopOverlay extends Phaser.GameObjects.Container {
             this.scene.showToast('Не хватает монет!');
             this.scene.sound.error();
           }
-        }, { disabled: !isAffordable, fontSize: '12px' });
+        }, { disabled: !isAffordable, primary: isAffordable, fontSize: `${MOBILE.font.caption}px`, depth: DS.overlay.shop + 2 });
+      btn.setDepth(DS.overlay.shop + 2);
       this.add(btn);
 
       y += cardH + 12;

@@ -4,6 +4,7 @@ import { TREE_NODES, STREAK_MULTIPLIERS } from '../../shared/goals.js';
 import { createUnifiedButton, createUnifiedBadge } from './ui-unified.js';
 import { UNIFIED } from './ui-unified.js';
 import { DS } from './DesignSystem.js';
+import { MOBILE } from './MobileScale.js';
 
 export class GoalsOverlay extends Phaser.GameObjects.Container {
   constructor(scene, goals) {
@@ -180,21 +181,27 @@ export class GoalsOverlay extends Phaser.GameObjects.Container {
       this.content.add(progText);
 
       if (canClaim) {
-        const qBtnX = startX + w - 66;
+        const qBtnX = startX + w - 72;
         const qBtnY = y - 12;
-        const qHit = this.scene.add.rectangle(qBtnX + 22, qBtnY + 12, 44, 44, 0x000000, 0.001).setInteractive({ useHandCursor: true });
+        // Тач-таргет 44×44 по нормам (Material 48 — с запасом), и он же
+        // принимает клик. Раньше кликал невидимый прямоугольник ПОД
+        // графикой: Phaser отдаёт клик только верхнему объекту (topOnly),
+        // поэтому кнопка часто «не реагировала».
+        const qHit = this.scene.add.rectangle(qBtnX + 24, qBtnY + 12, 48, 44, 0x000000, 0.001)
+          .setInteractive({ useHandCursor: true })
+          .setDepth(DS.overlay.goals + 2);
         this.content.add(qHit);
-        const qBtn = this.scene.add.graphics();
+        const qBtn = this.scene.add.graphics().setDepth(DS.overlay.goals + 3);
         qBtn.fillStyle(UNIFIED.color, 1);
-        qBtn.fillRoundedRect(qBtnX, qBtnY, 44, 24, 6);
-        qBtn.lineStyle(1, 0xc9a884, 0.4);
-        qBtn.strokeRoundedRect(qBtnX, qBtnY, 44, 24, 6);
+        qBtn.fillRoundedRect(qBtnX, qBtnY, 48, 26, 8);
+        qBtn.lineStyle(1.5, UNIFIED.colorLo, 0.8);
+        qBtn.strokeRoundedRect(qBtnX, qBtnY, 48, 26, 8);
         this.content.add(qBtn);
         qHit.on('pointerdown', () => this.scene.socket?.emit('quest-claim', { questId: q.id }));
         this.content.add(this.scene.add.text(
-          qBtnX + 22, qBtnY + 12, `+${q.reward}`,
-          { fontSize: '10px', color: '#ffffff', fontStyle: 'bold' }
-        ).setOrigin(0.5));
+          qBtnX + 24, qBtnY + 13, `+${q.reward}`,
+          { fontSize: `${MOBILE.font.caption}px`, color: '#ffffff', fontStyle: 'bold' }
+        ).setOrigin(0.5).setDepth(DS.overlay.goals + 4));
       }
       y += 30;
     });
@@ -227,19 +234,22 @@ export class GoalsOverlay extends Phaser.GameObjects.Container {
 
       if (done && !claimed) {
         const treeBtnY = rowY + 22;
-        const treeHit = this.scene.add.rectangle(startX + w / 2, treeBtnY + 12, Math.max(w, 44), Math.max(24, 44), 0x000000, 0.001).setInteractive({ useHandCursor: true });
+        // Тот же дефект, что и у квеста: невидимый прямоугольник под графикой.
+        const treeHit = this.scene.add.rectangle(startX + w / 2, treeBtnY + 13, Math.max(w, MOBILE.tap), 44, 0x000000, 0.001)
+          .setInteractive({ useHandCursor: true })
+          .setDepth(DS.overlay.goals + 2);
         this.content.add(treeHit);
-        const treeBtn = this.scene.add.graphics();
+        const treeBtn = this.scene.add.graphics().setDepth(DS.overlay.goals + 3);
         treeBtn.fillStyle(UNIFIED.color, 1);
-        treeBtn.fillRoundedRect(startX, treeBtnY, w, 24, 6);
-        treeBtn.lineStyle(1, 0xc9a884, 0.4);
-        treeBtn.strokeRoundedRect(startX, treeBtnY, w, 24, 6);
+        treeBtn.fillRoundedRect(startX, treeBtnY, w, 26, 8);
+        treeBtn.lineStyle(1.5, UNIFIED.colorLo, 0.8);
+        treeBtn.strokeRoundedRect(startX, treeBtnY, w, 26, 8);
         this.content.add(treeBtn);
         treeHit.on('pointerdown', () => this.scene.socket?.emit('tree-claim', { nodeId: node.id }));
         this.content.add(this.scene.add.text(
-          startX + w / 2, treeBtnY + 12, `Забрать: ${node.reward}`,
-          { fontSize: '11px', color: '#ffffff' }
-        ).setOrigin(0.5));
+          startX + w / 2, treeBtnY + 13, `Забрать: ${node.reward}`,
+          { fontSize: `${MOBILE.font.caption}px`, color: '#ffffff', fontStyle: 'bold' }
+        ).setOrigin(0.5).setDepth(DS.overlay.goals + 4));
         y += 50;
       } else {
         y += 24;
