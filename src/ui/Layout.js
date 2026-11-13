@@ -25,7 +25,14 @@ export const LAYOUT = {
   /** размер клетки; 42 — историческая база (8*42 = 336) */
   tileMin: 22,
   tileBase: 42,
-  tileMax: 48,
+  tileMax: 52,
+
+  /**
+   * Доля доступной области, которую сетка может занять.
+   * 1.0 = заполнить всё; меньше — оставить зазор под фон/декорации.
+   * На телефоне 8×8 при 100% перекрывает фон, поэтому 0.82.
+   */
+  gridFill: 0.82,
 
   /** верхняя панель */
   hudMin: 56,
@@ -158,7 +165,7 @@ export function computeLayout(w, h) {
   const availH = gridBottomLimit - gridTopReserve;
 
   const tileSize = clamp(
-    Math.floor(Math.min(availW, Math.max(availH, 0)) / 8),
+    Math.floor(Math.min(availW, Math.max(availH, 0)) * LAYOUT.gridFill / 8),
     LAYOUT.tileMin,
     LAYOUT.tileMax
   );
