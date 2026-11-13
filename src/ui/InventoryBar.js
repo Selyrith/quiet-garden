@@ -299,16 +299,58 @@ export class InventoryBar {
       .setInteractive({ useHandCursor: true })
       .setDepth(DS.depth.inventory + 2);
 
+    // Единый обработчик pointerdown: объединяем выбор + long-press таймер,
+    // чтобы не вызывать update() рекурсивно (removeAll(true) уничтожает hitArea
+    // прямо в обработчике → Phaser виснет).
+    let pressTimer = null;
+
     hitArea.on('pointerdown', (pointer) => {
       const isTouch = pointer && (pointer.wasTouch || pointer.pointerType === 'touch');
+
+      // Long-press для продажи на тач
+      if (isTouch) {
+        pressTimer = this.scene.time.delayedCall(600, () => {
+          const sell = getSeedSellPrice(plant?.price ?? 6);
+          this.showHint(`Удержите для продажи за ${sell}🪙`);
+          if (this.scene.sound) this.scene.sound.uiClick();
+        });
+      }
+
+      // ПКМ — быстрое продажа на десктопе
       if (!isTouch && pointer && pointer.rightButtonDown && pointer.rightButtonDown()) {
         this.scene.socket?.emit('sell-seed', { seedId });
         if (this.scene.sound) this.scene.sound.sell();
         return;
       }
+
+      // Выбор семени
       this.scene.selectedSeedId = seedId;
-      this.update(this.inventory, seedId);
+      this.activeSeedId = seedId; // обновляем локально, без рекурсивного update()
       if (this.scene.sound) this.scene.sound.buy();
+
+      // Перерисовываем кольцо активности без уничтожения hitArea.
+      // Старый способ (this.update(this.inventory, seedId)) вызывал
+      // removeAll(true) → уничтожал hitArea прямо в обработчике → зависание.
+      // Новый: update с сохранением, а не destroy.
+      this.slotsContainer.each((child) => {
+        if (child._seedId === seedId) {
+          child._bgSlot.clear();
+          drawRoundedRect(child._bgSlot, child._x - child._half, child._y - child._half, child._slotSize, child._slotSize, DS.radius.md,
+            DS.colors.brand.light, 1, DS.colors.brand.primary, 2);
+          if (!child._activeRing) {
+            child._activeRing = this.scene.add.graphics();
+            child._activeRing.setDepth(DS.depth.inventory + 1);
+            this.animateActiveRing(child._activeRing, child._x, child._y, child._slotSize);
+            this.slotsContainer.add(child._activeRing);
+          }
+        } else if (child._activeRing) {
+          child._activeRing.destroy();
+          child._activeRing = null;
+          child._bgSlot.clear();
+          drawRoundedRect(child._bgSlot, child._x - child._half, child._y - child._half, child._slotSize, child._slotSize, DS.radius.md,
+            child._bgColor, 1, child._borderColor, child._borderWidth);
+        }
+      });
 
       if (this.scene.onboarding?.active && this.scene.onboarding.step === 1) {
         this.scene.onboarding.next();
@@ -336,23 +378,25 @@ export class InventoryBar {
       this.scene.tweens.add({ targets: [g, countText], scale: 1, duration: DS.motion.fast, ease: DS.motion.easing.decelerate });
     });
 
-    // Long press для продажи на тач
-    let pressTimer = null;
-    hitArea.on('pointerdown', (pointer) => {
-      if (pointer.wasTouch || pointer.pointerType === 'touch') {
-        pressTimer = this.scene.time.delayedCall(600, () => {
-          const sell = getSeedSellPrice(plant?.price ?? 6);
-          this.showHint(`Удержите для продажи за ${sell}🪙`);
-          if (this.scene.sound) this.scene.sound.uiClick();
-        });
-      }
-    });
+    // Long press для продажи на тач — очистка таймера
     hitArea.on('pointerup', () => {
       if (pressTimer) { pressTimer.remove(false); pressTimer = null; }
     });
     hitArea.on('pointerout', () => {
       if (pressTimer) { pressTimer.remove(false); pressTimer = null; }
     });
+
+    // Метаданные для обновления без пересоздания
+    hitArea._seedId = seedId;
+    hitArea._bgSlot = bgSlot;
+    hitArea._x = x;
+    hitArea._y = y;
+    hitArea._half = half;
+    hitArea._slotSize = slotSize;
+    hitArea._bgColor = bgColor;
+    hitArea._borderColor = borderColor;
+    hitArea._borderWidth = borderWidth;
+    hitArea._activeRing = activeRing;
 
     this.slotsContainer.add([shadow, bgSlot, g, countText, hitArea]);
     if (activeRing) this.slotsContainer.add(activeRing);
