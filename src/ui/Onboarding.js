@@ -29,7 +29,7 @@ export class Onboarding {
       // Подсветка центральной грядки (2,3) — unified color pulse
       const tile = scene.tiles.get('2,3');
       if (tile && tile.rect) {
-        this.pulse = scene.add.rectangle(tile.rect.x, tile.rect.y, scene.tileSize, scene.tileSize, 0xd8a494, 0.4).setDepth(3);
+        this.pulse = scene.add.rectangle(tile.rect.x, tile.rect.y, scene.tileSize, scene.tileSize, 0xe8c55a, 0.4).setDepth(3);
         scene.tweens.add({ targets: this.pulse, alpha: { from: 0.2, to: 0.6 }, duration: 800, yoyo: true, repeat: -1 });
       }
       this.hint = scene.add.text(scene.scale.width / 2, scene.scale.height - 150,
@@ -43,7 +43,7 @@ export class Onboarding {
       const waterBtn = scene.toolButtons && scene.toolButtons.get('water');
       const container = waterBtn && waterBtn.container;
       if (container) {
-        this.pulse = scene.add.circle(0, 0, 40, 0xd8a494, 0.4).setDepth(149);
+        this.pulse = scene.add.circle(0, 0, 40, 0xe8c55a, 0.4).setDepth(149);
         container.add(this.pulse);
         scene.tweens.add({ targets: this.pulse, scale: { from: 0.9, to: 1.2 }, duration: 800, yoyo: true, repeat: -1 });
       }

@@ -13,8 +13,8 @@
  * меньше тач-зоны — это нормально и рекомендуется.
  */
 export const MOBILE = {
-  /** Минимальная сторона тач-таргета (Material 48dp). */
-  tap: 48,
+  /** Минимальная сторона тач-таргета (Dawnfield: 56dp — выше Apple HIG 44pt и Material 48dp). */
+  tap: 56,
   /** Комфортный тач-таргет для основных действий. */
   tapComfortable: 56,
   /** Зазор между соседними интерактивными элементами (web.dev: ≥8). */
@@ -45,10 +45,10 @@ export const MOBILE = {
    * ≥4.5:1 (WCAG AA) — при «слипании» это главный рычаг.
    */
   ink: {
-    strong: '#3d2b1f',
-    body: '#5c4a3a',
-    muted: '#8e7b63',
-    inverse: '#fdf8f3',
+    strong: '#3d2e20',
+    body: '#3d2e20',
+    muted: '#8a7a66',
+    inverse: '#fcf8f0',
   },
 };
 

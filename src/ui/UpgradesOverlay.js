@@ -88,7 +88,7 @@ export class UpgradesOverlay extends Phaser.GameObjects.Container {
         : `${u.unit}${Math.round(level * u.perLevel * 100)}% → ${u.unit}${Math.round((level + 1) * u.perLevel * 100)}%`;
 
       const bonusLabel = this.scene.add.text(x - panelW / 2 + 60, y + 54, bonusText, {
-        fontSize: '12px', color: '#5c4a3a', fontStyle: 'bold'
+        fontSize: '12px', color: '#3d2e20', fontStyle: 'bold'
       });
       this.cardsContainer.add(bonusLabel);
 
@@ -104,7 +104,7 @@ export class UpgradesOverlay extends Phaser.GameObjects.Container {
 
         if (!canBuy) {
           const disabledHint = this.scene.add.text(btnX, btnY + 24, 'Недостаточно монет', {
-            fontSize: '10px', color: '#aaaaaa', fontStyle: 'italic'
+            fontSize: '10px', color: '#8a7a66', fontStyle: 'italic'
           }).setOrigin(0.5);
           this.cardsContainer.add(disabledHint);
         }
@@ -113,7 +113,7 @@ export class UpgradesOverlay extends Phaser.GameObjects.Container {
         maxBadge.setStrokeStyle(1.5, '#ffffff');
         this.cardsContainer.add(maxBadge);
         this.cardsContainer.add(this.scene.add.text(x + panelW / 2 - 60, y + cardH / 2, 'MAX', {
-          fontSize: '10px', color: '#ffffff', fontStyle: 'bold'
+          fontSize: '10px', color: '#fcf8f0', fontStyle: 'bold'
         }).setOrigin(0.5));
       }
     });

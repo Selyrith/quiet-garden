@@ -41,7 +41,7 @@ export class PackOpeningOverlay extends Phaser.GameObjects.Container {
       // Создаем контейнер для содержимого карточки (появится позже)
       const content = scene.add.container(x, y).setAlpha(0);
 
-      const innerBg = scene.add.rectangle(0, 0, 76, 116, 0xf8f4ee)
+      const innerBg = scene.add.rectangle(0, 0, 76, 116, 0xf7f1e6)
         .setStrokeStyle(2, plant.rarity.color);
       content.add(innerBg);
 
@@ -96,7 +96,7 @@ export class PackOpeningOverlay extends Phaser.GameObjects.Container {
         .setInteractive({ useHandCursor: true })
         .setDepth(DS.overlay.pack + 2);
       const btn = scene.add.rectangle(btnX, btnY, btnW, btnH, UNIFIED.color, 1)
-        .setStrokeStyle(2, 0xffffff, 0.8)
+        .setStrokeStyle(2, 0xfcf8f0, 0.8)
         .setDepth(DS.overlay.pack + 3);
       const txt = scene.add.text(btnX, btnY, 'Отлично!', {
         fontSize: `${MOBILE.font.label}px`, color: UNIFIED.text, fontStyle: 'bold'

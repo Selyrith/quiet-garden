@@ -65,7 +65,7 @@ export class GoalsOverlay extends Phaser.GameObjects.Container {
     const daily = this.goals.daily || { claimed: true };
     const streak = this.goals.streak || { count: 0, multiplier: 1, dailyActions: 0, season: { name: 'Сезон', color: '#fff' } };
 
-    this.content.add(this.scene.add.text(startX + w, y - 20, streak.season.name, { fontSize: '11px', color: '#c9a884', fontStyle: 'italic' }).setOrigin(1, 0.5));
+    this.content.add(this.scene.add.text(startX + w, y - 20, streak.season.name, { fontSize: '11px', color: '#e8c55a', fontStyle: 'italic' }).setOrigin(1, 0.5));
 
     // 7-day calendar — unified badge circles
     const calY = y + 20;
@@ -143,12 +143,12 @@ export class GoalsOverlay extends Phaser.GameObjects.Container {
     const fillAlpha = btnDisabled ? UNIFIED.colorDisabledAlpha : 1;
     dailyBtnBg.fillStyle(fillColor, fillAlpha);
     dailyBtnBg.fillRoundedRect(startX, btnY, btnW, btnH, 8);
-    dailyBtnBg.lineStyle(1, 0xc9a884, 0.3);
+    dailyBtnBg.lineStyle(1, 0xe8c55a, 0.3);
     dailyBtnBg.strokeRoundedRect(startX, btnY, btnW, btnH, 8);
     this.content.add(dailyBtnBg);
     this.content.add(this.scene.add.text(
       startX + w / 2, btnY + btnH / 2, statusText,
-      { fontSize: '14px', color: btnDisabled ? '#aaaaaa' : '#ffffff', fontStyle: 'bold', fontFamily: UI.fontBody }
+      { fontSize: '14px', color: btnDisabled ? '#8a7a66' : '#fcf8f0', fontStyle: 'bold', fontFamily: UI.fontBody }
     ).setOrigin(0.5));
 
     y += 50;
@@ -167,7 +167,7 @@ export class GoalsOverlay extends Phaser.GameObjects.Container {
       y += 20;
 
       const barW = w - 80;
-      const bg = this.scene.add.rectangle(startX, y, barW, 8, 0x5c4a3a).setOrigin(0, 0.5);
+      const bg = this.scene.add.rectangle(startX, y, barW, 8, 0x3d2e20).setOrigin(0, 0.5);
       const fill = this.scene.add.rectangle(
         startX, y, Math.min(barW, barW * ((q.progress || 0) / q.target)), 8,
         q.claimed ? UNIFIED.secondary : UNIFIED.color
@@ -177,7 +177,7 @@ export class GoalsOverlay extends Phaser.GameObjects.Container {
 
       const progText = this.scene.add.text(startX + barW + 8, y,
         q.claimed ? '✓' : `${q.progress || 0}/${q.target}`,
-        { fontSize: '12px', color: canClaim ? UNIFIED.color : '#aaaaaa' });
+        { fontSize: '12px', color: canClaim ? UNIFIED.color : '#8a7a66' });
       this.content.add(progText);
 
       if (canClaim) {
@@ -200,7 +200,7 @@ export class GoalsOverlay extends Phaser.GameObjects.Container {
         qHit.on('pointerdown', () => this.scene.socket?.emit('quest-claim', { questId: q.id }));
         this.content.add(this.scene.add.text(
           qBtnX + 24, qBtnY + 13, `+${q.reward}`,
-          { fontSize: `${MOBILE.font.caption}px`, color: '#ffffff', fontStyle: 'bold' }
+          { fontSize: `${MOBILE.font.caption}px`, color: '#fcf8f0', fontStyle: 'bold' }
         ).setOrigin(0.5).setDepth(DS.overlay.goals + 4));
       }
       y += 30;
@@ -224,7 +224,7 @@ export class GoalsOverlay extends Phaser.GameObjects.Container {
       const done = value >= node.target;
       const claimed = (this.goals.treeClaimed || []).includes(node.id);
       const rowY = y + 8;
-      const color = claimed ? '#666666' : done ? 0xd8a494 : '#aaaaaa';
+      const color = claimed ? '#8a7a66' : done ? 0xe8c55a : '#8a7a66';
       this.content.add(this.scene.add.text(startX, rowY, node.text, {
         fontSize: '12px', color
       }));
@@ -248,7 +248,7 @@ export class GoalsOverlay extends Phaser.GameObjects.Container {
         treeHit.on('pointerdown', () => this.scene.socket?.emit('tree-claim', { nodeId: node.id }));
         this.content.add(this.scene.add.text(
           startX + w / 2, treeBtnY + 13, `Забрать: ${node.reward}`,
-          { fontSize: `${MOBILE.font.caption}px`, color: '#ffffff', fontStyle: 'bold' }
+          { fontSize: `${MOBILE.font.caption}px`, color: '#fcf8f0', fontStyle: 'bold' }
         ).setOrigin(0.5).setDepth(DS.overlay.goals + 4));
         y += 50;
       } else {
@@ -259,7 +259,7 @@ export class GoalsOverlay extends Phaser.GameObjects.Container {
 
   sectionTitle(x, y, text) {
     this.content.add(this.scene.add.text(x, y, text, {
-      fontSize: '14px', color: 0xd8a494, fontStyle: 'bold', fontFamily: UI.fontTitle
+      fontSize: '14px', color: 0xe8c55a, fontStyle: 'bold', fontFamily: UI.fontTitle
     }));
     return y + 24;
   }

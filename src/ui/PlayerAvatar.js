@@ -54,7 +54,7 @@ export function createAvatar(scene, playerId, genderId, roleId, tileSize, nickna
   if (labelText) {
     label = scene.add.text(0, -layout.size / 2 - 6, labelText, {
       fontSize: '11px',
-      color: '#ffffff',
+      color: '#fcf8f0',
       fontStyle: 'bold',
       stroke: '#3e2723',
       strokeThickness: 3,
@@ -112,7 +112,7 @@ export function updateAvatarLabel(avatar, nickname, isHost = false) {
     const layout = avatarLayout(avatar.tileSize || 42);
     avatar.label = avatar.scene.add.text(0, -layout.size / 2 - 6, text, {
       fontSize: '11px',
-      color: '#ffffff',
+      color: '#fcf8f0',
       fontStyle: 'bold',
       stroke: '#3e2723',
       strokeThickness: 3,

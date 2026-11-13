@@ -48,6 +48,22 @@ export class SoundManager {
     }
   }
 
+  /**
+   * Единая точка «разбудить звук»: снять блокировку автовоспроизведения
+   * и запустить музыку. Безопасно вызывать многократно и до init().
+   */
+  unlockAndPlay() {
+    if (!this.ctx) return;
+    const tryStart = () => {
+      if (this.enabled && this.music && !this.music.isPlaying) this.music.start();
+    };
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume().then(tryStart).catch(() => {});
+    } else {
+      tryStart();
+    }
+  }
+
   pause() {
     if (this.music) this.music.stop();
     if (this.ctx && this.ctx.state === 'running') {

@@ -105,15 +105,15 @@ export function renderGrid(book, allSeeds) {
         const bR = 9;
         const bx = cardSize / 2 - bR - 2;
         const by = -cardSize / 2 + bR + 2;
-        const badgeBg = book.scene.add.circle(bx, by, bR, 0xd8a494).setStrokeStyle(1.5, 0xffffff);
+        const badgeBg = book.scene.add.circle(bx, by, bR, 0xe8c55a).setStrokeStyle(1.5, 0xfcf8f0);
         card.add(badgeBg);
         card.add(book.scene.add.text(bx, by, `${mutCount}`, {
-          fontSize: '10px', color: '#ffffff', fontStyle: 'bold'
+          fontSize: '10px', color: '#fcf8f0', fontStyle: 'bold'
         }).setOrigin(0.5));
       }
     } else {
       card.add(book.scene.add.text(0, 0, '?', {
-        fontSize: `${Math.floor(cardSize * 0.4)}px`, color: '#8d6e63', fontStyle: 'bold'
+        fontSize: `${Math.floor(cardSize * 0.4)}px`, color: '#8a7a66', fontStyle: 'bold'
       }).setOrigin(0.5));
     }
 
@@ -132,7 +132,7 @@ export function renderGrid(book, allSeeds) {
   // Если карточек нет — подсказка
   if (actualCount === 0) {
     book.gridContainer.add(book.scene.add.text(0, 0, 'Ничего не найдено...', {
-      fontSize: '18px', color: '#8d6e63', fontStyle: 'italic', fontFamily: 'Nunito, Georgia, serif'
+      fontSize: '18px', color: '#8a7a66', fontStyle: 'italic', fontFamily: 'Nunito, Georgia, serif'
     }).setOrigin(0.5));
   }
 }
@@ -176,7 +176,7 @@ function renderChapterList(book) {
     bg.fillStyle(0xf5e6c8, 1);
     bg.fillRoundedRect(-rectW / 2, -rectH / 2, rectW, rectH, 8);
     if (complete) {
-      bg.lineStyle(3, 0xd8a494, 1);
+      bg.lineStyle(3, 0xe8c55a, 1);
     } else {
       bg.lineStyle(2, ch.color, 1);
     }
@@ -283,15 +283,15 @@ function renderChapterSeeds(book, chapterSeeds) {
         const bR = 9;
         const bx = cardSize / 2 - bR - 2;
         const by = -cardSize / 2 + bR + 2;
-        const badgeBg = scene.add.circle(bx, by, bR, 0xd8a494).setStrokeStyle(1.5, 0xffffff);
+        const badgeBg = scene.add.circle(bx, by, bR, 0xe8c55a).setStrokeStyle(1.5, 0xfcf8f0);
         card.add(badgeBg);
         card.add(scene.add.text(bx, by, `${mutCount}`, {
-          fontSize: '10px', color: '#ffffff', fontStyle: 'bold'
+          fontSize: '10px', color: '#fcf8f0', fontStyle: 'bold'
         }).setOrigin(0.5));
       }
     } else {
       card.add(scene.add.text(0, 0, '?', {
-        fontSize: `${Math.floor(cardSize * 0.4)}px`, color: '#8d6e63', fontStyle: 'bold'
+        fontSize: `${Math.floor(cardSize * 0.4)}px`, color: '#8a7a66', fontStyle: 'bold'
       }).setOrigin(0.5));
     }
 
@@ -309,7 +309,7 @@ function renderChapterSeeds(book, chapterSeeds) {
 
   if (pageSeeds.length === 0) {
     book.gridContainer.add(scene.add.text(0, 0, 'Ничего не найдено...', {
-      fontSize: '18px', color: '#8d6e63', fontStyle: 'italic', fontFamily: 'Nunito, Georgia, serif'
+      fontSize: '18px', color: '#8a7a66', fontStyle: 'italic', fontFamily: 'Nunito, Georgia, serif'
     }).setOrigin(0.5));
   }
 }

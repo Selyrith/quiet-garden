@@ -8,7 +8,7 @@ export function createEmotesBar(scene, onSend, onSendPhrase) {
   const camW = scene.scale.width;
   const camH = scene.scale.height;
   // Расширенный фон для эмодзи + фраз — единый цвет фона
-  const bg = scene.add.rectangle(camW / 2, camH / 2 + 20, 280, 170, 0x5c4a3a, 0.95).setStrokeStyle(2, UNIFIED.secondary).setInteractive();
+  const bg = scene.add.rectangle(camW / 2, camH / 2 + 20, 280, 170, 0x3d2e20, 0.95).setStrokeStyle(2, UNIFIED.secondary).setInteractive();
   container.add(bg);
 
   // Эмодзи (верхняя часть) — unified color, 44×44 min touch
@@ -18,8 +18,8 @@ export function createEmotesBar(scene, onSend, onSendPhrase) {
 
   VALID_EMOTES.forEach((emote) => {
     const hit = scene.add.rectangle(startX, camH / 2 - 10, Math.max(btnSize, 44), Math.max(btnSize, 44), 0x000000, 0.001).setInteractive({ useHandCursor: true });
-    const btn = scene.add.rectangle(startX, camH / 2 - 10, btnSize, btnSize, 0xd8a494).setInteractive({ useHandCursor: true });
-    btn.setStrokeStyle(1, 0xc9a884);
+    const btn = scene.add.rectangle(startX, camH / 2 - 10, btnSize, btnSize, 0xe8c55a).setInteractive({ useHandCursor: true });
+    btn.setStrokeStyle(1, 0xe8c55a);
     const txt = scene.add.text(startX, camH / 2 - 10, emote, { fontSize: '22px' }).setOrigin(0.5);
     const closeAction = () => {
       onSend(emote);
@@ -43,9 +43,9 @@ export function createEmotesBar(scene, onSend, onSendPhrase) {
     const px = camW / 2 - (3 * phraseW + 2 * phraseGap) / 2 + phraseW / 2 + col * (phraseW + phraseGap);
     const py = camH / 2 + 65 + row * (phraseH + phraseGap);
     const hit = scene.add.rectangle(px, py, Math.max(phraseW, 44), Math.max(phraseH, 44), 0x000000, 0.001).setInteractive({ useHandCursor: true });
-    const btn = scene.add.rectangle(px, py, phraseW, phraseH, 0xd8a494).setInteractive({ useHandCursor: true });
-    btn.setStrokeStyle(1, 0xc9a884);
-    const txt = scene.add.text(px, py, phrase, { fontSize: '11px', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5);
+    const btn = scene.add.rectangle(px, py, phraseW, phraseH, 0xe8c55a).setInteractive({ useHandCursor: true });
+    btn.setStrokeStyle(1, 0xe8c55a);
+    const txt = scene.add.text(px, py, phrase, { fontSize: '11px', color: '#fcf8f0', fontStyle: 'bold' }).setOrigin(0.5);
     const closeAction = () => {
       onSendPhrase(phrase);
       container.destroy();

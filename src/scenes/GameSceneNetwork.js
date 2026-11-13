@@ -195,7 +195,7 @@ export const GameSceneNetwork = {
       const c = this.getTileCenter(pos.x, pos.y);
       const container = this.add.container(c.x, c.y - 60).setDepth(400);
       const bg = this.add.rectangle(0, 0, 120, 28, 0x0f172a, 0.95).setStrokeStyle(1.5, 0x4fc3f7);
-      const txt = this.add.text(0, 0, text, { fontSize: '12px', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5);
+      const txt = this.add.text(0, 0, text, { fontSize: '12px', color: '#fcf8f0', fontStyle: 'bold' }).setOrigin(0.5);
       container.add([bg, txt]);
       this.tweens.add({
         targets: container, y: c.y - 110, alpha: 0,

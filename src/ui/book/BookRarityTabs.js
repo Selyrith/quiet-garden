@@ -43,7 +43,7 @@ export function setupRarityTabs(book) {
       bg.fillRoundedRect(-tabW / 2, -tabH, tabW, tabH + 10, { tl: 6, tr: 6, bl: 0, br: 0 });
 
       // Обводка
-      bg.lineStyle(1.5, isActive ? 0xc9a884 : 0xd8cebd, 1);
+      bg.lineStyle(1.5, isActive ? 0xe8c55a : 0xe6dccc, 1);
       bg.lineBetween(-tabW / 2, -tabH + 6, -tabW / 2, 5);
       bg.lineBetween(tabW / 2, -tabH + 6, tabW / 2, 5);
       bg.beginPath();
@@ -59,7 +59,7 @@ export function setupRarityTabs(book) {
 
     drawBg(book.activeRarity === tab.id);
 
-    const textColor = book.activeRarity === tab.id ? '#ffffff' : '#5c4a3a';
+    const textColor = book.activeRarity === tab.id ? '#fcf8f0' : '#3d2e20';
     const text = scene.add.text(0, -tabH / 2, tab.name, {
       fontSize: '12px', color: textColor, fontStyle: 'bold', fontFamily: 'Nunito, Georgia, serif'
     }).setOrigin(0.5);

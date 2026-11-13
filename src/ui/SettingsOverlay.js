@@ -19,10 +19,10 @@ export class SettingsOverlay {
     const panelX = w / 2;
     const panelY = h / 2;
 
-    this.bg = scene.add.rectangle(w / 2, h / 2, w, h, 0x5c4a3a, 0.9)
+    this.bg = scene.add.rectangle(w / 2, h / 2, w, h, 0x3d2e20, 0.9)
       .setDepth(DS.overlay.settings);
 
-    this.closeHit = scene.add.rectangle(w / 2, h / 2, w, h, 0x5c4a3a, 0.001)
+    this.closeHit = scene.add.rectangle(w / 2, h / 2, w, h, 0x3d2e20, 0.001)
       .setDepth(DS.overlay.settings + 1)
       .setInteractive();
     this.closeHit.on('pointerdown', (pointer) => {
@@ -40,11 +40,11 @@ export class SettingsOverlay {
 
     this.panel = scene.add.container(panelX, panelY).setDepth(DS.overlay.settings + 2);
 
-    const bgPanel = scene.add.rectangle(0, 0, panelW, panelH, 0xf8f4ee, 0.98).setStrokeStyle(2, 0xc9a884);
+    const bgPanel = scene.add.rectangle(0, 0, panelW, panelH, 0xf7f1e6, 0.98).setStrokeStyle(2, 0xe8c55a);
     this.panel.add(bgPanel);
 
     const title = scene.add.text(0, -panelH / 2 + 24, '⚙ Настройки', {
-      fontSize: '20px', color: '#5c4a3a', fontStyle: 'bold'
+      fontSize: '20px', color: '#3d2e20', fontStyle: 'bold'
     }).setOrigin(0.5);
     this.panel.add(title);
 
@@ -63,7 +63,7 @@ export class SettingsOverlay {
     // --- Тумблер звука ---
     const soundMuted = localStorage.getItem('qg_mute') === '1';
     const soundLabel = scene.add.text(-panelW / 2 + 24, y, soundMuted ? '🔇 Звук выкл' : '🔊 Звук вкл', {
-      fontSize: '16px', color: '#5c4a3a'
+      fontSize: '16px', color: '#3d2e20'
     }).setOrigin(0, 0.5);
     this.panel.add(soundLabel);
 
@@ -79,7 +79,7 @@ export class SettingsOverlay {
     // --- Тумблер уменьшения движения ---
     const reduceMotion = localStorage.getItem('qg_reduce_motion') === '1';
     const motionLabel = scene.add.text(-panelW / 2 + 24, y, reduceMotion ? '🍃 Уменьшение движения вкл' : '🍃 Уменьшение движения выкл', {
-      fontSize: '16px', color: '#5c4a3a'
+      fontSize: '16px', color: '#3d2e20'
     }).setOrigin(0, 0.5);
     this.panel.add(motionLabel);
 
@@ -93,8 +93,8 @@ export class SettingsOverlay {
     y += 55;
 
     // --- Кнопка сброса онбординга (деструктивная — error цвет) ---
-    const resetBtn = scene.add.rectangle(0, y, panelW - 48, 44, 0xcb8a6b).setStrokeStyle(2, 0xc9a884).setInteractive({ useHandCursor: true });
-    const resetText = scene.add.text(0, y, 'Сбросить онбординг', { fontSize: '15px', color: '#f8f4ee', fontStyle: 'bold' }).setOrigin(0.5);
+    const resetBtn = scene.add.rectangle(0, y, panelW - 48, 44, 0xc2654a).setStrokeStyle(2, 0xe8c55a).setInteractive({ useHandCursor: true });
+    const resetText = scene.add.text(0, y, 'Сбросить онбординг', { fontSize: '15px', color: '#fcf8f0', fontStyle: 'bold' }).setOrigin(0.5);
     resetBtn.on('pointerdown', () => {
       localStorage.removeItem('qg_onboarded');
       this.scene.showToast('Онбординг сброшен');

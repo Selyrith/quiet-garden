@@ -2,39 +2,42 @@ import Phaser from 'phaser';
 import { DS } from './DesignSystem.js';
 import { MOBILE, fitTapTarget } from './MobileScale.js';
 
+/**
+ * Единая палитра кнопок. Источник — design/reference/DESIGN-SPEC.md.
+ * Forest #3D7A52 — главное действие, Wheat #E8C55A — второстепенное,
+ * Terracotta #C2654A — только деструктив. Ни чистого #FFF, ни #000.
+ */
 export const UNIFIED = {
   // Единый цвет для ВСЕХ кнопок и плашек
-  color: 0xd8a494,   // базовый (терракотовый)
-  colorHi: 0xe8c3a8, // наведение (светлее)
-  colorLo: 0xc9a884, // нажатие (темнее)
+  color: 0x3d7a52,   // Forest — базовый
+  colorHi: 0x356444, // наведение (темнее, «press depth»)
+  colorLo: 0x2c5438, // нажатие (ещё темнее)
   colorDisabledAlpha: 0.4,
 
-  // ИЕРАРХИЯ. Раньше все кнопки были одного терракотового цвета, и глазу
-  // не за что было зацепиться: интерфейс «сливался в одно».
-  // Теперь три уровня: главное действие — насыщенный акцент,
-  // второстепенное — контур, третичное — без заливки.
-  primary: 0xc9885f,
-  primaryHi: 0xd8a494,
-  primaryLo: 0xb0734d,
-  outline: 0xffffff,
-  outlineText: '#5c4a3a',
-  text: '#ffffff',
+  // ИЕРАРХИЯ. Главное действие — Forest, второстепенное — контур,
+  // третичное — без заливки.
+  primary: 0x3d7a52,
+  primaryHi: 0x356444,
+  primaryLo: 0x2c5438,
+  outline: 0xf7f1e6,
+  outlineText: '#3d2e20',
+  text: '#fcf8f0',
   minTouch: MOBILE.tap,
   radius: MOBILE.radius,
 
-  // Вторичный цвет для закрытия / отклонения (ниже по иерархии)
-  secondary: 0x8e7b63,
-  secondaryText: '#ffffff',
+  // Вторичный цвет для закрытия / отклонения (ниже по иерархии) — Wheat
+  secondary: 0xe8c55a,
+  secondaryText: '#3d2e20',
 
-  // Ошибка — только деструктивные действия (сброс, удаление)
-  error: 0xcb8a6b,
-  errorText: '#f8f4ee',
+  // Ошибка — только деструктивные действия (сброс, удаление) — Terracotta
+  error: 0xc2654a,
+  errorText: '#fcf8f0',
 };
 
 /**
  * Единая кнопка для всего интерфейса.
  * Состояния: idle / hover / pressed / disabled.
- * Минимальный тач-таргет 44×44.
+ * Минимальный тач-таргет 56×56 (Dawnfield: превышает Apple HIG 44pt и Material 48dp).
  */
 export function createUnifiedButton(scene, x, y, w, h, label, onClick, {
   secondary = false,
@@ -51,7 +54,7 @@ export function createUnifiedButton(scene, x, y, w, h, label, onClick, {
   // Вариант primary — единственный «яркий» акцент на экране.
   // Остальные кнопки остаются приглушёнными, чтобы был контраст иерархии.
   const baseColor = primary ? UNIFIED.primary : secondary ? UNIFIED.secondary : UNIFIED.color;
-  const textColor = primary ? '#ffffff' : secondary ? UNIFIED.secondaryText : UNIFIED.text;
+  const textColor = primary ? '#fcf8f0' : secondary ? UNIFIED.secondaryText : UNIFIED.text;
 
   // Обёртка контейнера.
   //
@@ -92,12 +95,12 @@ export function createUnifiedButton(scene, x, y, w, h, label, onClick, {
     g.fillStyle(fillColor, alpha);
     g.fillRoundedRect(-w / 2, -h / 2, w, h, UNIFIED.radius);
     // Обводка: у primary — светлая (отделяет от фона), у остальных — мягкая.
-    g.lineStyle(2, primary ? 0xffffff : UNIFIED.colorLo, primary ? 0.55 : 0.6);
+    g.lineStyle(2, primary ? 0xfcf8f0 : UNIFIED.colorLo, primary ? 0.55 : 0.6);
     g.strokeRoundedRect(-w / 2, -h / 2, w, h, UNIFIED.radius);
 
     // Блик сверху (кроме pressed/disabled)
     if (!isPressed && !isDisabled) {
-      g.fillStyle(0xffffff, 0.12);
+      g.fillStyle(0xfffdf8, 0.12);
       g.fillRoundedRect(-w / 2 + 4, -h / 2 + 4, w - 8, h / 2 - 4, 8);
     }
   };
@@ -106,12 +109,12 @@ export function createUnifiedButton(scene, x, y, w, h, label, onClick, {
 
   // Текст метки
   const text = scene.add.text(0, 0, label, {
-    fontSize, fontStyle, color: textColor, fontFamily: 'Nunito, sans-serif',
+    fontSize, fontStyle, color: textColor, fontFamily: "'Nunito', sans-serif",
   }).setOrigin(0.5);
   container.add(text);
 
-  // Тач-таргет по мобильным нормам (48dp), но без раздувания: если кнопка
-  // шире — берём её ширину, иначе добиваем до 48.
+  // Тач-таргет по мобильным нормам (56dp), но без раздувания: если кнопка
+  // шире — берём её ширину, иначе добиваем до 56.
   const fitted = fitTapTarget(w, h);
   const touchW = Math.max(w, minTouch, fitted.w);
   const touchH = Math.max(h, minTouch, fitted.h);
@@ -127,7 +130,7 @@ export function createUnifiedButton(scene, x, y, w, h, label, onClick, {
     currentState = state;
     draw(state);
     if (!disabled) {
-      text.setColor(state === 'disabled' ? '#aaaaaa' : textColor);
+      text.setColor(state === 'disabled' ? '#8a7a66' : textColor);
     }
   };
 
@@ -164,19 +167,19 @@ export function createUnifiedBadge(scene, x, y, text, {
 
   const bg = scene.add.circle(0, 0, radius, UNIFIED.color,
     disabled ? UNIFIED.colorDisabledAlpha : 1);
-  bg.setStrokeStyle(1.5, '#ffffff', 1);
+  bg.setStrokeStyle(1.5, 0xfcf8f0, 1);
   container.add(bg);
 
   const txt = scene.add.text(0, 0, text, {
-    fontSize, fontStyle: 'bold', color: '#ffffff',
+    fontSize, fontStyle: 'bold', color: '#fcf8f0',
   }).setOrigin(0.5);
-  if (disabled) txt.setColor('#aaaaaa');
+  if (disabled) txt.setColor('#a89e94');
   container.add(txt);
 
   container.setDisabled = (val) => {
     disabled = val;
     bg.setAlpha(disabled ? UNIFIED.colorDisabledAlpha : 1);
-    txt.setColor(disabled ? '#aaaaaa' : '#ffffff');
+    txt.setColor(disabled ? '#a89e94' : '#fcf8f0');
   };
 
   return container;
@@ -200,11 +203,11 @@ export function createUnifiedToggle(scene, x, y, label, isOn, onChange, {
   track.setInteractive({ useHandCursor: true });
   container.add(track);
 
-  const knob = scene.add.circle(isOn ? 8 : -8, 0, knobRadius, 0xffffff);
+  const knob = scene.add.circle(isOn ? 8 : -8, 0, knobRadius, 0xfcf8f0);
   container.add(knob);
 
   const txt = scene.add.text(-size / 2 - 10, 0, label, {
-    fontSize, color: '#5c4a3a',
+    fontSize, color: '#3d2e20',
   }).setOrigin(0, 0.5);
   container.add(txt);
 

@@ -21,6 +21,7 @@ import { avatarStandPosition } from '../ui/avatar-layout.js';
 import { generateAllPlantTextures } from '../ui/PlantTextureFactory.js';
 import { escapeHtml } from '../ui/escapeHtml.js';
 import { DS, drawRoundedRect, drawShadowedRect, createButtonStyle } from '../ui/DesignSystem.js';
+import { createUnifiedButton } from '../ui/ui-unified.js';
 import { getDailyQuestion } from '../../shared/pets.js';
 import { Onboarding } from '../ui/Onboarding.js';
 import { GenderSelectionOverlay } from '../ui/GenderSelectionOverlay.js';
@@ -117,12 +118,21 @@ export default class GameScene extends Phaser.Scene {
     this.load.image('avatar-female', '/assets/images/avatar-female.svg');
   }
 
-  create() {
-    this.sound.init();
+  async create() {
+    // init() асинхронный (создаёт AudioContext, AssetManager, MusicManager).
+    // Раньше вызывался без await — ctx/am приходили в AmbienceManager и
+    // MusicManager как null, и музыка не стартовала никогда.
+    await this.sound.init();
     this.ambience = new AmbienceManager(this.sound.ctx, this.sound.am);
-    this.ambience.init();
-    this.input.once('pointerdown', () => this.sound.resume());
-    this.input.keyboard.once('keydown', () => this.sound.resume());
+    // init() тоже асинхронный (грузит 4 буфера эмбиенса) — ждём, иначе
+    // слои создаются с null-буферами и эмбиент молчит.
+    await this.ambience.init();
+
+    // Автовоспроизведение: браузеры разрешают звук только после жеста.
+    // Пробуем сразу (если пользователь уже взаимодействовал) и на первый жест.
+    this.sound.unlockAndPlay();
+    this.input.once('pointerdown', () => this.sound.unlockAndPlay());
+    this.input.keyboard.once('keydown', () => this.sound.unlockAndPlay());
 
     // Record all player input for stress-indicator telemetry (calm test).
     this.input.on('pointerdown', () => this.stressMetrics.recordInput());
@@ -351,7 +361,7 @@ export default class GameScene extends Phaser.Scene {
       .setDepth(0);
     if (!this.gardenPaths) this.gardenPaths = this.add.graphics().setDepth(0);
     this.gardenPaths.clear();
-    this.gardenPaths.lineStyle(2, 0xc9a884, 0.28);
+    this.gardenPaths.lineStyle(2, 0xe8c55a, 0.28);
     this.gardenPaths.strokeRoundedRect(offsetX - 3, offsetY - 3, totalSize + 6, totalSize + 6, 10);
     this.gardenPaths.lineStyle(1, 0x8d6e63, 0.18);
     for (let i = 1; i < GRID; i++) {
@@ -545,47 +555,50 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
+    /**
+   * Модальное окно «Яйцо питомца» — слой 3 (модальные диалоги).
+   * Палитра Dawnfield: Sunlit Cream панели, Forest primary, Wheat secondary.
+   * Ни чистого #000/#FFF, тёплые тени, 56dp тач-таргеты.
+   */
   openPetQuestionModal() {
     if (this.petModal) return;
     const w = this.scale.width;
     const h = this.scale.height;
     const panelW = Math.min(360, w - 32);
-    // Панель подстраивается под экран: на низком телефоне 440 не влезали,
-    // и содержимое уходило за нижний край — окно выглядело пустым.
     const panelH = Math.min(460, h - 48);
     const px = w / 2 - panelW / 2;
     const py = h / 2 - panelH / 2;
 
     const modalGroup = [];
+    const baseDepth = DS.overlay.detail; // 570
 
-    // Фон за панелью (полупрозрачный overlay на весь экран)
-    const backdrop = this.add.rectangle(0, 0, w, h, 0x000000, 0.5)
-      .setOrigin(0).setDepth(1999).setScrollFactor(0);
+    // Тёплый оверлей (не чёрный)
+    const backdrop = this.add.rectangle(0, 0, w, h, 0x3d2e20, 0.35)
+      .setOrigin(0).setDepth(baseDepth - 1).setScrollFactor(0);
     modalGroup.push(backdrop);
 
-    // Панель модала
-    const panel = this.add.graphics().setDepth(2000).setScrollFactor(0);
-    panel.fillStyle(0x0f172a, 0.98);
-    panel.fillRoundedRect(px, py, panelW, panelH, 16);
-    panel.lineStyle(3, UNIFIED.color, 1);
-    panel.strokeRoundedRect(px, py, panelW, panelH, 16);
+    // Панель: Sunlit Cream, тёплая тень, контур Wheat
+    const panel = this.add.graphics().setDepth(baseDepth).setScrollFactor(0);
+    drawShadowedRect(panel, px, py, panelW, panelH, DS.radius.xl, DS.colors.bg.elevated, 1, 'lg');
+    drawRoundedRect(panel, px, py, panelW, panelH, DS.radius.xl, DS.colors.bg.elevated, 1, DS.colors.ui.border, 2);
     modalGroup.push(panel);
 
-    // Яйцо питомца (центр вверху панели)
+    // Яйцо питомца (emoji — цвет не нужен)
     const eggText = this.add.text(w / 2, py + 60, '🥚', { fontSize: '72px' })
-      .setOrigin(0.5).setDepth(2001).setScrollFactor(0);
+      .setOrigin(0.5).setDepth(baseDepth + 10).setScrollFactor(0);
     modalGroup.push(eggText);
 
+    // Заголовок — Lilita One
     const eggLabel = this.add.text(w / 2, py + 115, 'Яйцо питомца', {
-      fontSize: '16px', color: '#f7ecd2', fontStyle: 'bold', fontFamily: 'Nunito, sans-serif'
-    }).setOrigin(0.5).setDepth(2001).setScrollFactor(0);
+      fontSize: '20px', color: DS.colors.text.primary, fontStyle: 'bold', fontFamily: DS.font.family.title
+    }).setOrigin(0.5).setDepth(baseDepth + 10).setScrollFactor(0);
     modalGroup.push(eggLabel);
 
     // Статистика: сколько дней ответили из 3
     const daysText = this.pet ? `День ${this.pet.daysAnswered}/3` : 'День 0/3';
     const statsText = this.add.text(w / 2, py + 145, daysText, {
-      fontSize: '13px', color: '#d8a494', fontStyle: 'bold', fontFamily: 'Nunito, sans-serif'
-    }).setOrigin(0.5).setDepth(2001).setScrollFactor(0);
+      fontSize: '14px', color: DS.colors.brand.secondary, fontStyle: 'bold', fontFamily: DS.font.family.base
+    }).setOrigin(0.5).setDepth(baseDepth + 10).setScrollFactor(0);
     modalGroup.push(statsText);
 
     // Вопрос
@@ -593,87 +606,42 @@ export default class GameScene extends Phaser.Scene {
     const question = getDailyQuestion(dayIndex);
 
     const qLabel = this.add.text(w / 2, py + 175, 'Вопрос для вас двоих:', {
-      fontSize: '12px', color: '#94a3b8', fontFamily: 'Nunito, sans-serif'
-    }).setOrigin(0.5).setDepth(2001).setScrollFactor(0);
+      fontSize: '13px', color: DS.colors.text.muted, fontFamily: DS.font.family.base
+    }).setOrigin(0.5).setDepth(baseDepth + 10).setScrollFactor(0);
     modalGroup.push(qLabel);
 
     const qText = this.add.text(w / 2, py + 200, question.q, {
-      fontSize: '16px', color: '#f7ecd2', fontStyle: 'bold', fontFamily: 'Nunito, Georgia, serif', align: 'center'
-    }).setOrigin(0.5).setWordWrapWidth(panelW - 60).setDepth(2001).setScrollFactor(0);
+      fontSize: '16px', color: DS.colors.text.primary, fontStyle: 'bold', fontFamily: DS.font.family.title, align: 'center'
+    }).setOrigin(0.5).setWordWrapWidth(panelW - 60).setDepth(baseDepth + 10).setScrollFactor(0);
     modalGroup.push(qText);
 
-    // Поле ввода ответа (DOM input поверх Phaser, позиция на экране)
+    // Поле ввода ответа (DOM input — слой 4)
     const inputHtml = `
       <div style="text-align: center; font-family: 'Nunito', sans-serif;">
         <input type="text" id="petAnswerInput" maxlength="100"
           placeholder="Ваш ответ..."
           style="
             width: ${Math.min(panelW - 80, 260)}px;
-            padding: 10px 14px;
-            font-size: 15px;
-            border: 2px solid #d8a494;
-            border-radius: 10px;
-            background: #1e293b;
-            color: #f7ecd2;
+            padding: 14px 16px;
+            font-size: 16px;
+            border: 2px solid #356444;
+            border-radius: 12px;
+            background: #fcf8f0;
+            color: #3d2e20;
             text-align: center;
             outline: none;
+            box-shadow: inset 0 2px 4px rgba(92,69,50,0.08);
           " autofocus />
       </div>
     `;
 
     const inputEl = this.add.dom(w / 2, py + 260).createFromHTML(inputHtml)
-      .setDepth(2002).setOrigin(0.5).setScrollFactor(0);
+      .setDepth(baseDepth + 20).setOrigin(0.5).setScrollFactor(0);
     modalGroup.push(inputEl);
 
-    // Кнопка отправить — крупная, под полем ввода
+    // Кнопка «Отправить» — Primary (Forest, embossed)
     const sendY = py + 315;
-    const sendGfx = this.add.graphics().setDepth(2002).setScrollFactor(0);
-    sendGfx.fillStyle(UNIFIED.color, 1);
-    sendGfx.fillRoundedRect(w / 2 - 80, sendY - 20, 160, 44, 12);
-    modalGroup.push(sendGfx);
-
-    const sendLabel = this.add.text(w / 2, sendY, 'Отправить', {
-      fontSize: '15px', color: '#0f172a', fontStyle: 'bold', fontFamily: 'Nunito, sans-serif'
-    }).setOrigin(0.5).setDepth(2003).setScrollFactor(0);
-    modalGroup.push(sendLabel);
-
-    const sendHit = this.add.rectangle(w / 2, sendY, 160, 44, 0x000000, 0.001)
-      .setInteractive({ useHandCursor: true }).setDepth(2004).setScrollFactor(0);
-    modalGroup.push(sendHit);
-
-    // Кнопка закрытия (X) — правый верхний угол панели, крупная, с фоном
-    const closeX = px + panelW - 32;
-    const closeY = py + 32;
-    const closeBg = this.add.circle(closeX, closeY, 22, UNIFIED.color, 0.2)
-      .setStrokeStyle(2, UNIFIED.color, 0.5)
-      .setDepth(2003).setScrollFactor(0);
-    modalGroup.push(closeBg);
-
-    const closeHit = this.add.rectangle(closeX, closeY, 40, 40, 0x000000, 0.001)
-      .setInteractive({ useHandCursor: true }).setDepth(2004).setScrollFactor(0);
-    modalGroup.push(closeHit);
-
-    const closeLabel = this.add.text(closeX, closeY, '✕', {
-      fontSize: '26px', color: '#f7ecd2', fontStyle: 'bold', fontFamily: 'Nunito, sans-serif'
-    }).setOrigin(0.5).setDepth(2005).setScrollFactor(0);
-    modalGroup.push(closeLabel);
-
-    // Если уже отвечал сегодня — показываем ответ вместо поля ввода
-    if (this.petMyAnswer) {
-      const inputWrapper = inputEl.node.querySelector('.pet-answer-wrapper') || inputEl.node;
-      inputEl.node.innerHTML = `
-        <div style="text-align: center; font-family: 'Nunito', sans-serif; padding: 20px 0;">
-          <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">Ваш ответ:</div>
-          <div style="font-size: 15px; color: #f7ecd2; background: #1e293b; padding: 12px 16px; border-radius: 10px; border: 1px solid #d8a494; max-width: 240px; margin: 0 auto;">${escapeHtml(this.petMyAnswer)}</div>
-          <div style="font-size: 11px; color: #64748b; margin-top: 8px;">Придёт ответ партнёра — день засчитается</div>
-        </div>
-      `;
-      sendHit.setVisible(false);
-      sendGfx.setVisible(false);
-      sendLabel.setVisible(false);
-    }
-
-    const commit = () => {
+    const sendBtn = createUnifiedButton(this, w / 2, sendY, 160, 52, 'Отправить', () => {
       if (this.petMyAnswer) {
         this.showToast('Вы уже ответили сегодня');
         return;
@@ -687,19 +655,38 @@ export default class GameScene extends Phaser.Scene {
       this.petMyAnswer = val;
       this.socket.emit('pet-answer', { answerText: val });
       this.closePetModal();
-    };
+    }, { primary: true, depth: baseDepth + 30 });
+    modalGroup.push(sendBtn);
 
-    sendHit.on('pointerdown', commit);
-
-    closeHit.on('pointerdown', () => {
+    // Кнопка закрытия (X) — Secondary (Wheat)
+    const closeX = px + panelW - 28;
+    const closeY = py + 28;
+    const closeBtn = createUnifiedButton(this, closeX, closeY, 44, 44, '✕', () => {
       this.closePetModal();
-    });
+    }, { secondary: true, fontSize: '20px', depth: baseDepth + 30 });
+    modalGroup.push(closeBtn);
+
+    // Если уже отвечал сегодня — показываем ответ вместо поля ввода
+    if (this.petMyAnswer) {
+      const inputNode = inputEl.node;
+      if (inputNode) {
+        inputNode.innerHTML = `
+          <div style="text-align: center; font-family: 'Nunito', sans-serif; padding: 20px 0;">
+            <div style="font-size: 12px; color: ${DS.css.textMuted}; margin-bottom: 8px;">Ваш ответ:</div>
+            <div style="font-size: 15px; color: ${DS.colors.text.primary}; background: ${DS.colors.bg.elevated}; padding: 12px 16px; border-radius: 12px; border: 1px solid ${DS.colors.ui.border}; max-width: 240px; margin: 0 auto;">${escapeHtml(this.petMyAnswer)}</div>
+            <div style="font-size: 11px; color: ${DS.css.textMuted}; margin-top: 8px;">Придёт ответ партнёра — день засчитается</div>
+          </div>
+        `;
+      }
+      sendBtn.setVisible(false);
+      // closeBtn остаётся видимым
+    }
 
     // Enter в поле ввода — отправить
     const inputNode = inputEl.node.querySelector('#petAnswerInput');
     if (inputNode && !this.petMyAnswer) {
       inputNode.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.stopPropagation(); commit(); }
+        if (e.key === 'Enter') { e.stopPropagation(); sendBtn.emit('pointerdown'); }
         if (e.key === 'Escape') { e.stopPropagation(); this.closePetModal(); }
       });
     }
@@ -707,9 +694,7 @@ export default class GameScene extends Phaser.Scene {
     // Сохраняем ссылки для очистки
     this.petModal = modalGroup;
     this._petInputEl = inputEl;
-  }
-
-  closePetModal() {
+  }closePetModal() {
     if (this.petModal) {
       this.petModal.forEach(el => {
         try { el.destroy(); } catch {}
@@ -1340,7 +1325,7 @@ export default class GameScene extends Phaser.Scene {
       badgeGfx.fillStyle(0x2ecc71, 1);
       badgeGfx.fillCircle(16, 36, 10);
       const badgeText = this.add.text(16, 36, `Ур.${level}`, {
-        fontSize: '9px', color: '#ffffff', fontStyle: 'bold', fontFamily: 'Nunito, sans-serif'
+        fontSize: '9px', color: '#fcf8f0', fontStyle: 'bold', fontFamily: 'Nunito, sans-serif'
       }).setOrigin(0.5);
       
       // Подпись под иконкой

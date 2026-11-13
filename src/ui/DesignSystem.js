@@ -2,58 +2,62 @@
  * Единая дизайн-система для Quiet Garden.
  * Все цвета, отступы, типографика, радиусы, тени — тут.
  * Использовать: import { DS } from './DesignSystem.js';
+ *
+ * ИСТОЧНИК ИСТИНЫ: design/reference/DESIGN-SPEC.md (Dawnfield UI/UX Spec,
+ * Hay Day–inspired, mobile-first). Значения ниже — прямой перенос его токенов.
+ * При расхождении старого кода с референсом правим код, а не референс.
  */
 
 export const DS = {
   // === ЦВЕТА ===
-  // Базовая тёпая палитра (cozy earth tones)
+  // Палитра Dawnfield. 60-30-10: 60% тёплые нейтрали, 30% зелень, 10% акценты.
   colors: {
-    // Фоновые
+    // Фоновые (Sunlit Cream / Rich Card — ни чистого белого, ни чёрного)
     bg: {
-      primary:   '#fdf8f3',    // основной фон (кремовый)
-      secondary: '#f5ebe0',    // вторичный (тёплый бежевый)
-      tertiary:  '#ede3d9',    // карточки/панели
-      elevated:  '#ffffff',    // всплывающие окна
+      primary:   '#F7F1E6',    // Sunlit Cream — базовый фон
+      secondary: '#F1E8D8',    // на шаг темнее
+      tertiary:  '#E4E7DC',    // --muted (приглушённая поверхность)
+      elevated:  '#FCF8F0',    // --card / --popover
     },
     // Оверлеи
     overlay: {
-      light:   'rgba(30,20,15,0.15)',
-      medium:  'rgba(30,20,15,0.35)',
-      heavy:   'rgba(30,20,15,0.55)',
+      light:   'rgba(61, 46, 32, 0.15)',
+      medium:  'rgba(61, 46, 32, 0.35)',
+      heavy:   'rgba(61, 46, 32, 0.55)',
     },
 
-    // Текст
+    // Текст (--foreground = Rich Soil, ни чистого чёрного)
     text: {
-      primary:   '#3d2b1f',    // основной текст (тёмно-коричневый)
-      secondary: '#6b5b4f',    // второстепенный
-      muted:     '#9a8d7f',    // подсказки/мета
-      inverse:   '#fdf8f3',    // на тёмных фонах
-      accent:    '#c87a3a',    // акцентный (терракота)
+      primary:   '#3D2E20',    // Rich Soil — основной текст
+      secondary: '#5C4532',    // Earth
+      muted:     '#8A7A66',    // подсказки/мета
+      inverse:   '#FCF8F0',    // на тёмных фонах (не #FFF)
+      accent:    '#C2654A',    // Terracotta
     },
 
     // Акценты / бренд
     brand: {
-      primary:   '#d4a574',    // тёплый песок (основной акцент)
-      secondary: '#b8956a',    // глубже
-      light:     '#efe3d8',    // очень светлый для фонов кнопок
-      dark:      '#9d7a4a',    // для нажатого состояния
-      gold:      '#fbbf24',    // золотистый для тостов/акцентов
+      primary:   '#3D7A52',    // Forest — основное действие
+      secondary: '#E8C55A',    // Wheat — вторичное
+      light:     '#DCE9DE',    // очень светлый для фонов кнопок
+      dark:      '#356444',    // нажатого состояния (--ring)
+      gold:      '#E8C55A',    // золотистый для тостов/наград
     },
 
     // Семантические
     semantic: {
-      success:   '#7db87d',    // зелёный (урожай/успех)
-      warning:   '#e8c56d',    // жёлтый (предупреждение)
-      error:     '#d67a6a',    // красноватый (ошибка)
-      info:      '#8ab4d8',    // синий (инфо)
+      success:   '#3D7A52',    // Forest
+      warning:   '#E8C55A',    // Wheat
+      error:     '#C2654A',    // Terracotta (destructive)
+      info:      '#7BBAD4',    // Sky
     },
 
     // Инструменты
     tools: {
-      plant:   { bg: '#d4a574', icon: '#3d2b1f', label: '#3d2b1f' },
-      water:   { bg: '#7db8d8', icon: '#1e3a5f', label: '#1e3a5f' },
-      harvest: { bg: '#e8b87d', icon: '#5d3a1a', label: '#5d3a1a' },
-      hand:    { bg: '#ede3d9', icon: '#6b5b4f', label: '#6b5b4f' },
+      plant:   { bg: '#3D7A52', icon: '#FCF8F0', label: '#FCF8F0' },
+      water:   { bg: '#7BBAD4', icon: '#3D2E20', label: '#3D2E20' },
+      harvest: { bg: '#E8C55A', icon: '#3D2E20', label: '#3D2E20' },
+      hand:    { bg: '#E4E7DC', icon: '#5C4532', label: '#5C4532' },
     },
 
     // Редкости растений
@@ -80,38 +84,39 @@ export const DS = {
 
     // UI элементы
     ui: {
-      border:        '#d4c4b0',
-      borderFocus:   '#d4a574',
-      divider:       '#e8ddd0',
-      shadow:        'rgba(30,20,15,0.12)',
-      shadowStrong:  'rgba(30,20,15,0.22)',
-      vignette:      '#1e140f',
+      border:        '#E6DCCC',    // --border
+      borderFocus:   '#3D7A52',    // Forest, не акцентный песок
+      divider:       '#EDE4D4',
+      shadow:        'rgba(92, 69, 50, 0.10)',   // тёплая тень, не чёрная
+      shadowStrong:  'rgba(92, 69, 50, 0.18)',
+      vignette:      '#3D2E20',    // Rich Soil
     },
   },
 
   // Единые визуальные токены для DOM и Phaser.
   // Значения синхронизированы с index.html через CSS custom properties.
   uiTokens: {
-    panel: '#f8f4ee',
-    panelStrong: '#ffffff',
-    panelTranslucent: 'rgba(255, 255, 255, 0.86)',
-    border: '#e6dcc9',
-    borderStrong: '#d4c4b0',
-    shadow: 'rgba(96, 80, 66, 0.14)',
-    shadowStrong: 'rgba(96, 80, 66, 0.22)',
-    text: '#5c4a3a',
-    textMuted: '#8e7b63',
-    textOnAccent: '#ffffff',
-    accent: '#d8a494',
-    accentHover: '#e8c3a8',
-    accentPressed: '#c9a884',
-    secondary: '#b8c4a6',
-    destructive: '#cb8a6b',
-    overlay: 'rgba(35, 25, 18, 0.54)',
-    focus: 'rgba(185, 200, 166, 0.22)',
+    panel: '#FCF8F0',
+    panelStrong: '#FFFDF8',
+    panelTranslucent: 'rgba(252, 248, 240, 0.88)',
+    border: '#E6DCCC',
+    borderStrong: '#D9CBB4',
+    shadow: 'rgba(92, 69, 50, 0.10)',
+    shadowStrong: 'rgba(92, 69, 50, 0.18)',
+    text: '#3D2E20',
+    textMuted: '#8A7A66',
+    textOnAccent: '#FCF8F0',
+    accent: '#3D7A52',
+    accentHover: '#356444',
+    accentPressed: '#2C5438',
+    secondary: '#E8C55A',
+    destructive: '#C2654A',
+    overlay: 'rgba(61, 46, 32, 0.54)',
+    focus: 'rgba(232, 197, 90, 0.28)',
   },
 
   // === РАЗМЕРЫ ===
+  // База сетки 8dp (Dawnfield). 56dp — минимальный touch target.
   spacing: {
     xs:  4,
     sm:  8,
@@ -125,17 +130,18 @@ export const DS = {
   radius: {
     sm:   8,
     md:   12,
-    lg:   16,
-    xl:   24,
+    lg:   16,   // --radius: 1rem — база референса
+    xl:   24,   // панели
     full: 999,
     pill: 100,
   },
 
   // === ТИПОГРАФИКА ===
+  // Lilita One — display/headers, Nunito — body. Никаких Inter/DM Sans/Georgia.
   font: {
     family: {
-      base:   "'Nunito', 'Quicksand', 'Comfortaa', system-ui, sans-serif",
-      title:  "'Fredoka One', 'Nunito', 'Comfortaa', cursive",
+      base:   "'Nunito', 'Quicksand', system-ui, sans-serif",
+      title:  "'Lilita One', 'Fredoka One', 'Nunito', cursive",
       mono:   "'JetBrains Mono', 'Fira Code', monospace",
     },
     size: {
@@ -166,15 +172,15 @@ export const DS = {
   shadows: {
     sm:   '0 1px 2px rgba(30,20,15,0.08)',
     md:   '0 4px 8px rgba(30,20,15,0.12)',
-    lg:   '0 8px 24px rgba(30,20,15,0.16)',
-    xl:   '0 16px 40px rgba(30,20,15,0.20)',
-    inner: 'inset 0 2px 4px rgba(30,20,15,0.06)',
-    // Для Phaser Graphics (не CSS)
+    lg:   '0 8px 24px rgba(92,69,50,0.14)',
+    xl:   '0 16px 40px rgba(92,69,50,0.18)',
+    inner: 'inset 0 2px 4px rgba(92,69,50,0.06)',
+    // Для Phaser Graphics (не CSS). Тени тёплые (Rich Soil), не чёрные.
     phaser: {
-      sm:   { offsetY: 1, blur: 2,  color: 0x1e140f, alpha: 0.08 },
-      md:   { offsetY: 4, blur: 8,  color: 0x1e140f, alpha: 0.12 },
-      lg:   { offsetY: 8, blur: 24, color: 0x1e140f, alpha: 0.16 },
-      xl:   { offsetY: 16, blur: 40, color: 0x1e140f, alpha: 0.20 },
+      sm:   { offsetY: 1, blur: 2,  color: 0x5C4532, alpha: 0.08 },
+      md:   { offsetY: 4, blur: 8,  color: 0x5C4532, alpha: 0.12 },
+      lg:   { offsetY: 8, blur: 24, color: 0x5C4532, alpha: 0.16 },
+      xl:   { offsetY: 16, blur: 40, color: 0x5C4532, alpha: 0.20 },
     },
   },
 
@@ -192,9 +198,10 @@ export const DS = {
     },
   },
 
-  // === TAUCH-ТАРГЕТЫ (минимальные) ===
+  // === TAЧ-ТАРГЕТЫ (минимальные) ===
+  // Dawnfield: 56×56dp минимум (Apple HIG 44pt, Material 48dp — превышаем оба).
   touchTarget: {
-    min: 48, // 48x48 px — Google Material / Apple HIG рекомендации
+    min: 56,
     comfortable: 56,
   },
 
@@ -246,6 +253,27 @@ export const DS = {
   hexToPhaser(hex) {
     const h = hex.replace('#', '');
     return parseInt(h, 16);
+  },
+
+  // CSS-строки для свойства `color` у Text (Phaser Text color: accepts hex strings).
+  // Раньше в `color:` подставляли числовой токен — текст пропадал.
+  css: {
+    bgPrimary:    '#F7F1E6',
+    bgElevated:   '#FCF8F0',
+    textPrimary:  '#3D2E20',
+    textSecondary: '#5C4532',
+    textMuted:    '#8A7A66',
+    textInverse:  '#FCF8F0',
+    accent:       '#3D7A52',
+    accentHover:  '#356444',
+    accentPressed: '#2C5438',
+    secondary:    '#E8C55A',
+    destructive:  '#C2654A',
+    border:       '#E6DCCC',
+    borderStrong: '#D9CBB4',
+    shadow:       'rgba(92, 69, 50, 0.10)',
+    overlay:      'rgba(61, 46, 32, 0.54)',
+    focus:        'rgba(232, 197, 90, 0.28)',
   },
 
   // Сгенерировать CSS-переменные для DOM-элементов (если нужны)

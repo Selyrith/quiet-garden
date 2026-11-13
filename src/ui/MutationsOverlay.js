@@ -110,7 +110,7 @@ export class MutationsOverlay extends Phaser.GameObjects.Container {
       const card = this.scene.add.container(x, y);
 
       // Card border — unified color when unlocked, secondary when locked
-      let borderColor = unlocked ? 0xd8a494 : 0x333333;
+      let borderColor = unlocked ? 0xe8c55a : 0x333333;
 
       const bgCard = this.scene.add.rectangle(0, 0, cardSize, cardSize, unlocked ? 0x2c3e50 : 0x1c2833)
         .setStrokeStyle(2, borderColor);

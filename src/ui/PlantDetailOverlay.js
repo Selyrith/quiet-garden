@@ -118,7 +118,7 @@ export class PlantDetailOverlay extends Phaser.GameObjects.Container {
         .setDepth(DS.overlay.detail + 3);
       this.add(btn);
       this.add(scene.add.text(panelX, btnY, 'Понятно', {
-        fontSize: `${MOBILE.font.label}px`, color: '#ffffff', fontStyle: 'bold'
+        fontSize: `${MOBILE.font.label}px`, color: '#fcf8f0', fontStyle: 'bold'
       }).setOrigin(0.5).setDepth(DS.overlay.detail + 4));
       btnHit.on('pointerdown', () => this.destroy());
       return;
@@ -170,11 +170,11 @@ export class PlantDetailOverlay extends Phaser.GameObjects.Container {
         .setDepth(DS.overlay.detail + 2);
       this.add(btnHit);
       const btn = scene.add.rectangle(panelX, btnY, panelW - 56, MOBILE.buttonH, UNIFIED.primary, 1)
-        .setStrokeStyle(1.5, 0xffffff, 0.5)
+        .setStrokeStyle(1.5, 0xfcf8f0, 0.5)
         .setDepth(DS.overlay.detail + 3);
       this.add(btn);
       this.add(scene.add.text(panelX, btnY, `✨ Мутации: ${mutCount}`, {
-        fontSize: `${MOBILE.font.label}px`, color: '#ffffff', fontStyle: 'bold'
+        fontSize: `${MOBILE.font.label}px`, color: '#fcf8f0', fontStyle: 'bold'
       }).setOrigin(0.5).setDepth(DS.overlay.detail + 4));
       btnHit.on('pointerdown', openMutations);
     } else if (y < panelY + panelH / 2 - 30) {

@@ -27,7 +27,7 @@ export default class PauseScene extends Phaser.Scene {
     this.add.rectangle(0, 0, W, H, 0x000000, 0.72).setOrigin(0).setInteractive();
 
     this.add.text(W / 2, H * 0.32, 'Пауза', {
-      fontSize: '36px', color: '#ffffff', fontStyle: 'bold'
+      fontSize: '36px', color: '#fcf8f0', fontStyle: 'bold'
     }).setOrigin(0.5).setShadow(0, 3, '#000000', 6);
 
     this.add.text(W / 2, H * 0.4, 'Можно вернуться в любой момент', {
@@ -67,7 +67,7 @@ export default class PauseScene extends Phaser.Scene {
       .setStrokeStyle(2, 0xffffff, 0.85)
       .setInteractive({ useHandCursor: true });
     this.add.text(x, y, label, {
-      fontSize: '17px', color: '#ffffff', fontStyle: 'bold'
+      fontSize: '17px', color: '#fcf8f0', fontStyle: 'bold'
     }).setOrigin(0.5);
     bg.on('pointerdown', onClick);
   }
