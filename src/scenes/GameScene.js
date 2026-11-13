@@ -20,7 +20,7 @@ import { createAvatar, tintAvatar, updateAvatarLabel } from '../ui/PlayerAvatar.
 import { avatarStandPosition } from '../ui/avatar-layout.js';
 import { generateAllPlantTextures } from '../ui/PlantTextureFactory.js';
 import { escapeHtml } from '../ui/escapeHtml.js';
-import { DS, drawRoundedRect, drawShadowedRect, createButtonStyle } from '../ui/DesignSystem.js';
+import { DS, drawRoundedRect, drawShadowedRect } from '../ui/DesignSystem.js';
 import { createUnifiedButton } from '../ui/ui-unified.js';
 import { getDailyQuestion } from '../../shared/pets.js';
 import { Onboarding } from '../ui/Onboarding.js';
@@ -694,7 +694,9 @@ export default class GameScene extends Phaser.Scene {
     // Сохраняем ссылки для очистки
     this.petModal = modalGroup;
     this._petInputEl = inputEl;
-  }closePetModal() {
+  }
+
+  closePetModal() {
     if (this.petModal) {
       this.petModal.forEach(el => {
         try { el.destroy(); } catch {}
