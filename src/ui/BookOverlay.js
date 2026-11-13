@@ -7,6 +7,7 @@ import { setupRarityTabs } from './book/BookRarityTabs.js';
 import { renderGrid } from './book/BookGrid.js';
 import { UNIFIED } from './ui-unified.js';
 import { DS } from './DesignSystem.js';
+import { UI } from './ui-theme.js';
 
 export class BookOverlay extends Phaser.GameObjects.Container {
   constructor(scene, collection) {
@@ -105,11 +106,11 @@ export class BookOverlay extends Phaser.GameObjects.Container {
     for (const seed of getAllSeeds()) if (this.collection.has(seed)) unlocked++;
 
     this.title = scene.add.text(-W/4, -H/2 + 30, `📖 Книга Растений`, {
-      fontSize: '24px', color: '#3e2723', fontStyle: 'bold', fontFamily: 'Georgia, serif'
+      fontSize: '24px', color: '#3e2723', fontStyle: 'bold', fontFamily: 'Nunito, Georgia, serif'
     }).setOrigin(0.5);
 
     this.counterText = scene.add.text(-W/4, -H/2 + 60, `Открыто: ${unlocked} из ${TOTAL_PLANTS}`, {
-      fontSize: '15px', color: '#8d6e63', fontStyle: 'italic', fontFamily: 'Georgia, serif'
+      fontSize: '15px', color: '#8d6e63', fontStyle: 'italic', fontFamily: 'Nunito, Georgia, serif'
     }).setOrigin(0.5);
 
     this.bookContainer.add([this.title, this.counterText]);
@@ -122,13 +123,13 @@ export class BookOverlay extends Phaser.GameObjects.Container {
 
     this.chaptersHit = scene.add.rectangle(leftTabX, tabY, tabW, 40, 0x000000, 0.001).setInteractive({ useHandCursor: true });
     this.chaptersBtn = scene.add.text(leftTabX, tabY, '🌿 Главы', {
-      fontSize: '15px', color: '#5d4037', fontStyle: 'bold', fontFamily: 'Georgia, serif'
+      fontSize: `${DS.font.size.base}px`, color: UI.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle
     }).setOrigin(0.5);
     this.chaptersHit.on('pointerdown', () => { this.viewMode = 'chapters'; this.activeChapter = null; this.page = 0; this.renderPage(); });
 
     this.plantsHit = scene.add.rectangle(rightTabX, tabY, tabW, 40, 0x000000, 0.001).setInteractive({ useHandCursor: true });
     this.plantsBtn = scene.add.text(rightTabX, tabY, '📖 Растения', {
-      fontSize: '15px', color: '#5d4037', fontStyle: 'bold', fontFamily: 'Georgia, serif'
+      fontSize: `${DS.font.size.base}px`, color: UI.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle
     }).setOrigin(0.5);
     this.plantsHit.on('pointerdown', () => { this.viewMode = 'plants'; this.activeChapter = null; this.page = 0; this.renderPage(); });
 
@@ -151,7 +152,7 @@ export class BookOverlay extends Phaser.GameObjects.Container {
     const pagerY = H/2 - 25;
     this.prevBtn = scene.add.text(-W/4, pagerY, '◀', { fontSize: '28px', color: '#8d6e63' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     this.nextBtn = scene.add.text(W/4, pagerY, '▶', { fontSize: '28px', color: '#8d6e63' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    this.pageText = scene.add.text(0, pagerY, '', { fontSize: '16px', color: '#5d4037', fontFamily: 'Georgia, serif', fontStyle: 'bold' }).setOrigin(0.5);
+    this.pageText = scene.add.text(0, pagerY, '', { fontSize: '16px', color: '#5d4037', fontFamily: 'Nunito, Georgia, serif', fontStyle: 'bold' }).setOrigin(0.5);
 
     this.prevBtn.on('pointerdown', () => this.changePage(-1));
     this.nextBtn.on('pointerdown', () => this.changePage(1));

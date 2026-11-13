@@ -89,6 +89,28 @@ export const DS = {
     },
   },
 
+  // Единые визуальные токены для DOM и Phaser.
+  // Значения синхронизированы с index.html через CSS custom properties.
+  uiTokens: {
+    panel: '#f8f4ee',
+    panelStrong: '#ffffff',
+    panelTranslucent: 'rgba(255, 255, 255, 0.86)',
+    border: '#e6dcc9',
+    borderStrong: '#d4c4b0',
+    shadow: 'rgba(96, 80, 66, 0.14)',
+    shadowStrong: 'rgba(96, 80, 66, 0.22)',
+    text: '#5c4a3a',
+    textMuted: '#8e7b63',
+    textOnAccent: '#ffffff',
+    accent: '#d8a494',
+    accentHover: '#e8c3a8',
+    accentPressed: '#c9a884',
+    secondary: '#b8c4a6',
+    destructive: '#cb8a6b',
+    overlay: 'rgba(35, 25, 18, 0.54)',
+    focus: 'rgba(185, 200, 166, 0.22)',
+  },
+
   // === РАЗМЕРЫ ===
   spacing: {
     xs:  4,

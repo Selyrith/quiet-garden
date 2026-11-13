@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { getPlant } from '../../shared/plants.js';
 import { drawPixelPlant } from './PixelArt.js';
 import { DS } from './DesignSystem.js';
+import { UNIFIED } from './ui-unified.js';
+import { UI } from './ui-theme.js';
 
 export class PackOpeningOverlay extends Phaser.GameObjects.Container {
   constructor(scene, seeds) {
@@ -11,11 +13,11 @@ export class PackOpeningOverlay extends Phaser.GameObjects.Container {
     this.setDepth(DS.overlay.pack);
     this.scene = scene;
 
-    this.bg = scene.add.rectangle(0, 0, cam.width, cam.height, 0x000000, 0.85).setOrigin(0).setInteractive();
+    this.bg = scene.add.rectangle(0, 0, cam.width, cam.height, 0x231912, 0.62).setOrigin(0).setInteractive();
     this.add(this.bg);
 
     this.title = scene.add.text(cam.width / 2, cam.height / 2 - 120, 'Открываем пак...', {
-      fontSize: '24px', color: '#ffffff', fontStyle: 'bold'
+      fontSize: `${DS.font.size.xl}px`, color: UI.textLight, fontStyle: 'bold', fontFamily: UI.fontTitle
     }).setOrigin(0.5);
     this.add(this.title);
 
@@ -29,8 +31,8 @@ export class PackOpeningOverlay extends Phaser.GameObjects.Container {
       const x = startX + i * spacing;
       const y = cam.height / 2;
 
-      const cardBg = scene.add.rectangle(x, y, 80, 120, 0x1e293b)
-        .setStrokeStyle(2, 0x475569)
+      const cardBg = scene.add.rectangle(x, y, 80, 120, UI.parchment)
+        .setStrokeStyle(2, UI.woodLight)
         .setScale(0);
       this.add(cardBg);
       this.cards.push(cardBg);
@@ -38,7 +40,7 @@ export class PackOpeningOverlay extends Phaser.GameObjects.Container {
       // Создаем контейнер для содержимого карточки (появится позже)
       const content = scene.add.container(x, y).setAlpha(0);
 
-      const innerBg = scene.add.rectangle(0, 0, 76, 116, 0x2c3e50)
+      const innerBg = scene.add.rectangle(0, 0, 76, 116, 0xf8f4ee)
         .setStrokeStyle(2, plant.rarity.color);
       content.add(innerBg);
 
@@ -48,7 +50,7 @@ export class PackOpeningOverlay extends Phaser.GameObjects.Container {
       content.add(g);
 
       const nameText = scene.add.text(0, -45, plant.name, {
-        fontSize: '10px', color: '#ffffff', align: 'center', wordWrap: { width: 70 }
+        fontSize: '10px', color: UI.textDark, align: 'center', wordWrap: { width: 70 }
       }).setOrigin(0.5);
       content.add(nameText);
 
@@ -93,7 +95,7 @@ export class PackOpeningOverlay extends Phaser.GameObjects.Container {
       const btn = scene.add.rectangle(btnX, btnY, btnW, btnH, 0xd8a494)
         .setStrokeStyle(2, 0xffffff);
       const txt = scene.add.text(btnX, btnY, 'Отлично!', {
-        fontSize: '16px', color: '#ffffff', fontStyle: 'bold'
+        fontSize: `${DS.font.size.base}px`, color: UNIFIED.text, fontStyle: 'bold'
       }).setOrigin(0.5);
 
       const closeAction = () => this.destroy();

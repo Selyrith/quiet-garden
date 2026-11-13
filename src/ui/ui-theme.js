@@ -7,6 +7,7 @@ export const UI = {
   parchment: 0xf8f4ee,
   textDark: 0x5c4a3a,
   textLight: 0xffffff,
+  textSecondary: 0x8e7b63,
   gold: 0xd8a494,
   goldHi: 0xe8c3a8,
   leaf: 0xa8d593,

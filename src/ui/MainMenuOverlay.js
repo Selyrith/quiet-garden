@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { UNIFIED, createUnifiedButton } from './ui-unified.js';
 import { DS } from './DesignSystem.js';
+import { UI, drawPanel } from './ui-theme.js';
 
 export class MainMenuOverlay extends Phaser.GameObjects.Container {
   constructor(scene, callbacks) {
@@ -15,7 +16,7 @@ export class MainMenuOverlay extends Phaser.GameObjects.Container {
     if (scene.signpostDom) { scene.signpostDom.destroy(); scene.signpostDom = null; }
 
     // Затемнение
-    this.bg = scene.add.rectangle(0, 0, cam.width, cam.height, 0x000000, 0.6)
+    this.bg = scene.add.rectangle(0, 0, cam.width, cam.height, DS.hexToPhaser(DS.uiTokens.overlay.slice(0, 7)), 0.58)
       .setOrigin(0).setInteractive();
     this.bg.on('pointerdown', () => {});
     this.add(this.bg);
@@ -27,12 +28,13 @@ export class MainMenuOverlay extends Phaser.GameObjects.Container {
     const panelX = cam.width / 2;
     const panelY = cam.height / 2;
 
-    this.panel = scene.add.rectangle(panelX, panelY, panelW, panelH, 0x1a1f2b, 0.98)
-      .setStrokeStyle(3, 0x4a5a6a).setInteractive();
+    this.panel = scene.add.graphics();
+    drawPanel(this.panel, panelX - panelW / 2, panelY - panelH / 2, panelW, panelH, DS.radius.lg, true);
+    this.panel.setInteractive(new Phaser.Geom.Rectangle(panelX - panelW / 2, panelY - panelH / 2, panelW, panelH), Phaser.Geom.Rectangle.Contains);
     this.add(this.panel);
 
     this.title = scene.add.text(panelX, panelY - panelH / 2 + 20, 'Меню', {
-      fontSize: '24px', color: '#ffffff', fontStyle: 'bold'
+      fontSize: `${DS.font.size.xl}px`, color: UI.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle
     }).setOrigin(0.5, 0);
     this.add(this.title);
 
@@ -40,14 +42,14 @@ export class MainMenuOverlay extends Phaser.GameObjects.Container {
     const closeHit = scene.add.rectangle(
       panelX + panelW / 2 - 24,
       panelY - panelH / 2 + 24,
-      44, 44, UNIFIED.color
+      UNIFIED.minTouch, UNIFIED.minTouch, UNIFIED.color
     ).setInteractive({ useHandCursor: true });
     closeHit.setStrokeStyle(2, UNIFIED.colorHi);
     const closeBtn = scene.add.text(
       panelX + panelW / 2 - 24,
       panelY - panelH / 2 + 24,
       '✕',
-      { fontSize: '24px', color: '#3e2723', fontStyle: 'bold' }
+      { fontSize: `${DS.font.size.xl}px`, color: UI.textDark, fontStyle: 'bold' }
     ).setOrigin(0.5);
     closeHit.on('pointerdown', () => this.destroy());
     this.add([closeHit, closeBtn]);
@@ -65,11 +67,18 @@ export class MainMenuOverlay extends Phaser.GameObjects.Container {
 
     const cols = 2;
     const btnW = (panelW - 60) / cols;
-    const btnH = 56;
+    // На низких экранах кнопки не должны выходить за нижний край панели.
+    // Высота считается по доступному месту, но остаётся в удобном диапазоне.
+    const rows = Math.ceil(items.length / cols);
+    const top = panelY - panelH / 2 + 78;
+    const bottom = panelY + panelH / 2 - 24;
     const gapX = 12;
-    const gapY = 12;
+    const gapY = 10;
+    const availableH = Math.max(180, bottom - top);
+    const btnH = Math.max(44, Math.min(58, (availableH - (rows - 1) * gapY) / rows));
+    const gridH = rows * btnH + (rows - 1) * gapY;
     const startX = panelX - (cols * btnW + (cols - 1) * gapX) / 2 + btnW / 2;
-    const startY = panelY - panelH / 2 + 90;
+    const startY = top + (availableH - gridH) / 2 + btnH / 2;
 
     items.forEach((item, i) => {
       const col = i % cols;

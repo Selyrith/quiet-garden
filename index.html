@@ -16,7 +16,7 @@
   <meta property="og:description" content="Кооперативный антистресс-сад для 2-4 игроков" />
   <meta property="og:type" content="website" />
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
 
     :root {
       --bg-primary: #F9F5EE;
@@ -26,23 +26,31 @@
       --accent-sage: #B9C8A6;
       --accent-earth: #C4A684;
       --accent-leaf: #A8D593;
-      --text-primary: #6B5B4A;
-      --text-secondary: #9E8C75;
-      --border-light: #E6DCC9;
+      --text-primary: #5c4a3a;
+      --text-secondary: #8e7b63;
+      --border-light: #e6dcc9;
       --tile-green: #B8D8B8;
       --tile-hover: #F3EFE4;
-      --btn-primary-start: #D8A494;
-      --btn-primary-end: #C9A884;
-      --btn-secondary-bg: #D8CEBD;
-      --shadow-soft: rgba(96, 80, 66, 0.08);
-      --shadow-card: rgba(96, 80, 66, 0.12);
+      --btn-primary-start: #e8c3a8;
+      --btn-primary-end: #d8a494;
+      --btn-primary-pressed: #c9a884;
+      --btn-secondary-bg: #b8c4a6;
+      --panel-bg: #f8f4ee;
+      --panel-bg-strong: #ffffff;
+      --overlay: rgba(35, 25, 18, 0.54);
+      --focus-ring: rgba(185, 200, 166, 0.22);
+      --radius-sm: 12px;
+      --radius-md: 16px;
+      --radius-lg: 24px;
+      --shadow-soft: rgba(96, 80, 66, 0.10);
+      --shadow-card: rgba(96, 80, 66, 0.16);
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
       width: 100%; height: 100%; overflow: hidden;
-      background: var(--bg-primary); 
-      font-family: 'Inter', 'Nunito', 'Segoe UI', Tahoma, sans-serif;
+      background: var(--bg-primary);
+      font-family: 'Nunito', 'Inter', system-ui, sans-serif;
       touch-action: none; -webkit-tap-highlight-color: transparent;
     }
     #game-container {
@@ -56,7 +64,7 @@
       content: "";
       position: fixed;
       inset: 0;
-      background: 
+      background:
         radial-gradient(at 25% 25%, #FFF8EF 0%, var(--bg-primary) 60%),
         radial-gradient(at 75% 75%, #F2E9DA 0%, var(--bg-primary) 60%);
       pointer-events: none;
@@ -64,7 +72,7 @@
     }
 
     .screen {
-      position: fixed; inset: 0; 
+      position: fixed; inset: 0;
       background: none;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       z-index: 10; width: 100%; height: 100%;
@@ -72,58 +80,58 @@
     .screen.hidden { display: none; }
 
     .screen .container {
-      background: linear-gradient(180deg, rgba(255,255,255,0.7), rgba(242,233,218,0.85));
+      background: linear-gradient(180deg, rgba(255,255,255,0.90), rgba(248,244,238,0.96));
       backdrop-filter: blur(16px);
       width: 100%; max-width: 460px; padding: 40px 28px;
-      border-radius: 32px; box-shadow: 
-        0 30px 60px var(--shadow-card), 
+      border-radius: 28px; box-shadow:
+        0 24px 54px var(--shadow-card),
         0 0 0 1px var(--border-light);
       border: none;
     }
 
-    .title { 
-      font-family: 'DM Sans', sans-serif;
-      font-weight: 700; font-size: clamp(1.8rem, 6vw, 2.4rem); 
-      color: var(--text-primary); letter-spacing: -0.02em; 
+    .title {
+      font-family: 'Nunito', sans-serif;
+      font-weight: 700; font-size: clamp(1.8rem, 6vw, 2.4rem);
+      color: var(--text-primary); letter-spacing: -0.02em;
       margin-bottom: 6px; text-shadow: 0 2px 6px rgba(201, 168, 132, 0.25);
     }
-    .subtitle { 
-      font-family: 'Inter', sans-serif; font-size: 0.95rem; 
+    .subtitle {
+      font-family: 'Nunito', sans-serif; font-size: 0.95rem;
       color: var(--text-secondary); margin-bottom: 32px; font-weight: 400;
     }
 
     .slots-container {
-      display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 380px;
+      display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 380px;
       margin-top: 4px;
     }
-    
+
     .slot {
-      background: var(--bg-secondary);
-      border: 2px solid var(--border-light); border-radius: 24px;
-      padding: 22px 20px; display: flex; justify-content: space-between; align-items: center;
+      background: rgba(255, 255, 255, 0.72);
+      border: 2px solid var(--border-light); border-radius: var(--radius-lg);
+      padding: 20px; display: flex; justify-content: space-between; align-items: center;
       transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       cursor: pointer; text-align: left; position: relative;
-      box-shadow: 0 8px 24px var(--shadow-soft);
+      box-shadow: 0 8px 20px var(--shadow-soft);
     }
-    .slot:hover { 
-      border-color: var(--accent-earth); 
-      box-shadow: 0 16px 32px rgba(196, 166, 132, 0.18);
+    .slot:hover {
+      border-color: var(--btn-primary-end);
+      box-shadow: 0 14px 28px var(--shadow-soft);
       transform: translateY(-2px);
     }
-    .slot:active { transform: scale(0.985); }
-    
-    .slot.empty { 
-      border-style: dashed; background: rgba(184, 213, 147, 0.08); border-color: var(--accent-sage);
+    .slot:active { transform: scale(0.985); background: rgba(248, 244, 238, 0.96); }
+
+    .slot.empty {
+      border-style: dashed; background: rgba(184, 196, 166, 0.10); border-color: var(--btn-secondary-bg);
     }
-    .slot.empty:hover { background: rgba(184, 213, 147, 0.14); }
-    
+    .slot.empty:hover { background: rgba(184, 196, 166, 0.16); }
+
     .slot-info { flex: 1; display: flex; flex-direction: column; gap: 5px; }
-    .slot-title { color: var(--text-primary); font-size: 16px; font-weight: 600; font-family: 'DM Sans', sans-serif; }
+    .slot-title { color: var(--text-primary); font-size: 16px; font-weight: 700; font-family: 'Nunito', sans-serif; }
     .slot-sub { color: var(--text-secondary); font-size: 12px; }
-    
+
     .slot-delete {
-      position: absolute; top: 12px; right: 12px; background: none; 
-      color: var(--text-secondary); border: none; cursor: pointer; 
+      position: absolute; top: 12px; right: 12px; background: none;
+      color: var(--text-secondary); border: none; cursor: pointer;
       font-size: 12px; font-weight: 600; transition: all 0.2s;
       padding: 6px 8px; border-radius: 10px;
     }
@@ -134,56 +142,60 @@
       margin-top: 32px; width: 100%; max-width: 380px;
     }
     .nick-input {
-      width: 100%; min-width: 0; 
-      padding: 18px 20px; font-size: 17px;
+      width: 100%; min-width: 0;
+      padding: 16px 18px; font-size: 16px;
       border: 2px solid var(--border-light); border-radius: 20px;
-      background: #fff; color: var(--text-primary); font-weight: 500;
-      outline: none; transition: all 0.2s;
+      background: rgba(255,255,255,0.92); color: var(--text-primary); font-weight: 600;
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .nick-input:focus { border-color: var(--accent-sage); box-shadow: 0 0 0 4px rgba(185, 200, 166, 0.15); }
+    .nick-input:focus, .code-input:focus, .note-editor input[type="text"]:focus { border-color: var(--btn-secondary-bg); box-shadow: 0 0 0 4px var(--focus-ring); }
     .nick-input::placeholder { color: var(--text-secondary); font-size: 15px; }
     .input-row {
       display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;
     }
-    
+
     .code-input {
-      width: 100%; min-width: 0; 
-      padding: 22px 20px; font-size: 22px; letter-spacing: 5px; 
+      width: 100%; min-width: 0;
+      padding: 18px 20px; font-size: 20px; letter-spacing: 4px;
       text-transform: uppercase; border: 2px solid var(--border-light);
-      border-radius: 20px; font-family: 'DM Sans', monospace; outline: none;
-      background: #fff; color: var(--text-primary); font-weight: 700;
-      transition: all 0.2s;
+      border-radius: 20px; font-family: 'Nunito', monospace; outline: none;
+      background: rgba(255,255,255,0.92); color: var(--text-primary); font-weight: 800;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .code-input:focus { border-color: var(--accent-sage); box-shadow: 0 0 0 4px rgba(185, 200, 166, 0.15); }
+    .code-input:focus { border-color: var(--btn-secondary-bg); box-shadow: 0 0 0 4px var(--focus-ring); }
 
     .btn-join {
-      width: 100%; padding: 22px; font-size: 19px; 
-      background: linear-gradient(180deg, var(--btn-primary-start), var(--btn-primary-end)); 
-      color: #FFFFFF; border: none; border-radius: 22px; cursor: pointer; 
-      font-family: 'DM Sans', sans-serif; font-weight: 700; white-space: nowrap;
-      box-shadow: 0 10px 20px rgba(201, 168, 132, 0.25); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      width: 100%; min-height: 56px; padding: 16px 22px; font-size: 18px;
+      background: linear-gradient(180deg, var(--btn-primary-start), var(--btn-primary-end));
+      color: #FFFFFF; border: 1px solid rgba(201, 168, 132, 0.55); border-radius: var(--radius-md); cursor: pointer;
+      font-family: 'Nunito', sans-serif; font-weight: 700; white-space: nowrap;
+      box-shadow: 0 10px 20px var(--shadow-soft); transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
     }
-    .btn-join:active { transform: scale(0.97); box-shadow: 0 4px 10px rgba(201, 168, 132, 0.2); }
-    .btn-join:hover { filter: brightness(1.03); box-shadow: 0 14px 28px rgba(201, 168, 132, 0.3); }
+    .btn-join:active { transform: scale(0.98); background: var(--btn-primary-pressed); box-shadow: 0 4px 10px var(--shadow-soft); }
+    .btn-join:hover { filter: brightness(1.03); box-shadow: 0 14px 28px var(--shadow-card); }
 
-    .error { 
-      color: var(--accent-earth); font-size: 13px; margin-top: 6px; min-height: 20px; 
+    .btn-join:focus-visible, .slot:focus-visible, .slot-delete:focus-visible, .note-btn:focus-visible {
+      outline: 3px solid var(--btn-secondary-bg); outline-offset: 3px;
+    }
+
+    .error {
+      color: var(--accent-earth); font-size: 13px; margin-top: 6px; min-height: 20px;
       font-weight: 500; margin-bottom: 4px;
     }
 
     .note-editor {
       position: relative;
-      background: var(--bg-secondary);
-      border: 2px solid var(--border-light); 
-      border-radius: 24px;
+      background: rgba(248, 244, 238, 0.96);
+      border: 2px solid var(--border-light);
+      border-radius: var(--radius-lg);
       padding: 26px 30px;
       box-shadow: 0 20px 40px var(--shadow-card);
       display: flex; flex-direction: column; gap: 16px;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Nunito', sans-serif;
     }
     .note-title {
-      color: var(--accent-earth); font-weight: 600; font-size: 14px;
-      font-family: 'DM Sans', sans-serif; text-align: center;
+      color: var(--btn-primary-end); font-weight: 800; font-size: 14px;
+      font-family: 'Nunito', sans-serif; text-align: center;
     }
     .note-editor input[type="text"] {
       width: 100%;
@@ -191,31 +203,31 @@
       font-size: 16px;
       border: 2px solid var(--border-light);
       border-radius: 16px;
-      background: #fff; color: var(--text-primary);
-      font-family: 'Inter', sans-serif;
-      outline: none; transition: all 0.2s;
+      background: rgba(255,255,255,0.92); color: var(--text-primary);
+      font-family: 'Nunito', sans-serif;
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
       box-sizing: border-box;
     }
-    .note-editor input[type="text"]:focus { border-color: var(--accent-sage); box-shadow: 0 0 0 4px rgba(185, 200, 166, 0.15); }
+    .note-editor input[type="text"]:focus { border-color: var(--btn-secondary-bg); box-shadow: 0 0 0 4px var(--focus-ring); }
     .note-btns { display: flex; gap: 10px; justify-content: center; }
     .note-btn {
-      flex: 1; padding: 12px 0;
-      font-size: 14px; font-weight: 600;
+      flex: 1; min-height: 44px; padding: 12px 16px;
+      font-size: 14px; font-weight: 800;
       border: none; border-radius: 16px; cursor: pointer;
-      font-family: 'DM Sans', sans-serif;
-      transition: all 0.2s;
+      font-family: 'Nunito', sans-serif;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
     .note-btn:active { transform: scale(0.98); }
     .note-btn-save {
-      background: linear-gradient(180deg, #a8e6cf, #8fd39c);
-      color: #2d5f3d;
+      background: linear-gradient(180deg, #c7d8b8, var(--btn-secondary-bg));
+      color: #3f523f;
     }
-    .note-btn-save:hover { background: linear-gradient(180deg, #8fd39c, #7ec088); box-shadow: 0 6px 14px rgba(143, 211, 156, 0.3); }
+    .note-btn-save:hover { background: linear-gradient(180deg, var(--btn-secondary-bg), #a8b89a); box-shadow: 0 6px 14px rgba(96, 80, 66, 0.16); }
     .note-btn-cancel {
-      background: linear-gradient(180deg, #f5cac3, #ec9a91);
-      color: #7a4a42;
+      background: linear-gradient(180deg, #e8c3a8, var(--btn-primary-end));
+      color: #5c4a3a;
     }
-    .note-btn-cancel:hover { background: linear-gradient(180deg, #ec9a91, #d98479); box-shadow: 0 6px 14px rgba(236, 154, 145, 0.3); }
+    .note-btn-cancel:hover { background: linear-gradient(180deg, var(--btn-primary-end), var(--btn-primary-pressed)); box-shadow: 0 6px 14px rgba(96, 80, 66, 0.16); }
   </style>
 </head>
 <body>

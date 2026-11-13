@@ -132,7 +132,7 @@ export function renderGrid(book, allSeeds) {
   // Если карточек нет — подсказка
   if (actualCount === 0) {
     book.gridContainer.add(book.scene.add.text(0, 0, 'Ничего не найдено...', {
-      fontSize: '18px', color: '#8d6e63', fontStyle: 'italic', fontFamily: 'Georgia, serif'
+      fontSize: '18px', color: '#8d6e63', fontStyle: 'italic', fontFamily: 'Nunito, Georgia, serif'
     }).setOrigin(0.5));
   }
 }
@@ -190,13 +190,13 @@ function renderChapterList(book) {
 
     // Название
     rect.add(scene.add.text(-rectW / 2 + 40, -8, ch.name, {
-      fontSize: '13px', color: '#5d4037', fontStyle: 'bold', fontFamily: 'Georgia, serif',
+      fontSize: '13px', color: '#5d4037', fontStyle: 'bold', fontFamily: 'Nunito, Georgia, serif',
       wordWrap: { width: rectW - 50 }
     }).setOrigin(0, 0.5));
 
     // Прогресс X/8
     rect.add(scene.add.text(-rectW / 2 + 40, 12, `${owned} / ${ch.seeds.length}`, {
-      fontSize: '11px', color: complete ? 0xd8a494 : '#8d6e63', fontFamily: 'Georgia, serif'
+      fontSize: '11px', color: complete ? '#c9a884' : '#8d6e63', fontFamily: 'Nunito, Georgia, serif'
     }).setOrigin(0, 0.5));
 
     // Клик — открываем главу
@@ -309,7 +309,7 @@ function renderChapterSeeds(book, chapterSeeds) {
 
   if (pageSeeds.length === 0) {
     book.gridContainer.add(scene.add.text(0, 0, 'Ничего не найдено...', {
-      fontSize: '18px', color: '#8d6e63', fontStyle: 'italic', fontFamily: 'Georgia, serif'
+      fontSize: '18px', color: '#8d6e63', fontStyle: 'italic', fontFamily: 'Nunito, Georgia, serif'
     }).setOrigin(0.5));
   }
 }

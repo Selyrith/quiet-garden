@@ -596,7 +596,7 @@ export default class GameScene extends Phaser.Scene {
     modalGroup.push(qLabel);
 
     const qText = this.add.text(w / 2, py + 200, question.q, {
-      fontSize: '16px', color: '#f7ecd2', fontStyle: 'bold', fontFamily: 'Georgia, serif', align: 'center'
+      fontSize: '16px', color: '#f7ecd2', fontStyle: 'bold', fontFamily: 'Nunito, Georgia, serif', align: 'center'
     }).setOrigin(0.5).setWordWrapWidth(panelW - 60).setDepth(2001).setScrollFactor(0);
     modalGroup.push(qText);
 
@@ -1440,7 +1440,7 @@ export default class GameScene extends Phaser.Scene {
     overlay.add(panel);
 
     overlay.add(this.add.text(cam.width / 2, py + 24, '🌳 Дерево команды', {
-      fontSize: '20px', color: '#3e2723', fontStyle: 'bold', fontFamily: 'Georgia, serif'
+      fontSize: '20px', color: '#3e2723', fontStyle: 'bold', fontFamily: 'Nunito, Georgia, serif'
     }).setOrigin(0.5));
 
     const bigTree = this.add.graphics();
@@ -1450,7 +1450,7 @@ export default class GameScene extends Phaser.Scene {
 
     const t = this.tree || { level: 0, progress: 0, nextLevelAt: 50 };
     overlay.add(this.add.text(cam.width / 2, py + 310, `Уровень ${t.level}`, {
-      fontSize: '18px', color: '#3e2723', fontStyle: 'bold', fontFamily: 'Georgia, serif'
+      fontSize: '18px', color: '#3e2723', fontStyle: 'bold', fontFamily: 'Nunito, Georgia, serif'
     }).setOrigin(0.5));
 
     overlay.add(this.add.text(cam.width / 2, py + 336, `${t.progress} / ${t.nextLevelAt} до следующего уровня`, {

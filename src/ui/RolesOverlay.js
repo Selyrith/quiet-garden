@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { ROLES } from '../../shared/roles.js';
 import { UNIFIED } from './ui-unified.js';
 import { DS } from './DesignSystem.js';
+import { UI, drawPanel } from './ui-theme.js';
 
 export class RolesOverlay extends Phaser.GameObjects.Container {
   constructor(scene, currentRole) {
@@ -14,37 +15,36 @@ export class RolesOverlay extends Phaser.GameObjects.Container {
     if (scene.signpostDom) { scene.signpostDom.destroy(); scene.signpostDom = null; }
 
     const cam = scene.cameras.main;
-    this.bg = scene.add.rectangle(0, 0, cam.width, cam.height, 0x000000, 0.85)
+    this.bg = scene.add.rectangle(0, 0, cam.width, cam.height, 0x231912, 0.58)
       .setOrigin(0).setInteractive();
     // Убрали закрытие по фону
     this.add(this.bg);
 
     const panelW = Math.min(340, cam.width - 20);
     const panelH = Math.min(460, cam.height - 20);
-    this.panel = scene.add.rectangle(
-      cam.width / 2, cam.height / 2, panelW, panelH, 0x1a1f2b, 0.98
-    ).setStrokeStyle(2, 0x4a5a6a);
+    this.panel = scene.add.graphics();
+    drawPanel(this.panel, cam.width / 2 - panelW / 2, cam.height / 2 - panelH / 2, panelW, panelH, DS.radius.lg, true);
     this.add(this.panel);
 
     const titleText = currentRole ? 'Сменить роль' : 'Выберите роль';
     this.add(scene.add.text(
       cam.width / 2, cam.height / 2 - panelH / 2 + 14, titleText,
-      { fontSize: '18px', color: '#ffffff', fontStyle: 'bold' }
+      { fontSize: `${DS.font.size.lg}px`, color: UI.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle }
     ).setOrigin(0.5, 0));
 
     this.add(scene.add.text(
       cam.width / 2, cam.height / 2 - panelH / 2 + 38,
       'Роль даёт пассивные бонусы',
-      { fontSize: '12px', color: '#aaaaaa' }
+      { fontSize: `${DS.font.size.xs}px`, color: UI.textMuted }
     ).setOrigin(0.5, 0));
 
     if (currentRole) {
-      const closeHitArea = scene.add.rectangle(cam.width / 2 + panelW / 2 - 24, cam.height / 2 - panelH / 2 + 24, 44, 44, UNIFIED.color).setInteractive({ useHandCursor: true });
+      const closeHitArea = scene.add.rectangle(cam.width / 2 + panelW / 2 - 24, cam.height / 2 - panelH / 2 + 24, UNIFIED.minTouch, UNIFIED.minTouch, UNIFIED.color).setInteractive({ useHandCursor: true });
       closeHitArea.setStrokeStyle(2, UNIFIED.colorHi);
       const closeBtn = scene.add.text(
         cam.width / 2 + panelW / 2 - 24,
         cam.height / 2 - panelH / 2 + 12, '✕',
-        { fontSize: '22px', color: '#3e2723', fontStyle: 'bold' }
+        { fontSize: `${DS.font.size.lg}px`, color: UI.textDark, fontStyle: 'bold' }
       ).setOrigin(0.5, 0);
       closeHitArea.on('pointerdown', () => this.destroy());
       this.add([closeHitArea, closeBtn]);
@@ -52,7 +52,7 @@ export class RolesOverlay extends Phaser.GameObjects.Container {
       const skipHit = scene.add.rectangle(cam.width / 2, cam.height / 2 + panelH / 2 - 24, 100, 44, 0x000000, 0.001).setInteractive({ useHandCursor: true });
       const skipBtn = scene.add.text(
         cam.width / 2, cam.height / 2 + panelH / 2 - 20, 'Пропустить',
-        { fontSize: '14px', color: '#ffffff', fontStyle: 'bold' }
+        { fontSize: `${DS.font.size.sm}px`, color: UI.textDark, fontStyle: 'bold' }
       ).setOrigin(0.5);
       skipHit.on('pointerdown', () => {
         this.scene.socket?.emit('role-set', { roleId: 'gardener' });
@@ -79,8 +79,8 @@ export class RolesOverlay extends Phaser.GameObjects.Container {
       // Карта роли: unified color когда текущая, secondary когда не текущая
       const card = scene.add.rectangle(
         startX + cardW / 2, y + cardH / 2, cardW, cardH,
-        isCurrent ? 0xd8a494 : 0x8e7b63, isCurrent ? 1 : 0.9
-      ).setStrokeStyle(2, isCurrent ? 0xffffff : 0x5c4a3a);
+        isCurrent ? UI.parchment : 0xeee5da, 0.98
+      ).setStrokeStyle(2, isCurrent ? UI.woodHi : UI.woodLight);
 
       card.setInteractive({ useHandCursor: true });
 
@@ -92,11 +92,11 @@ export class RolesOverlay extends Phaser.GameObjects.Container {
 
       this.add(scene.add.text(
         startX + 16, y + 14, `${role.icon} ${role.name}`,
-        { fontSize: '16px', color: '#ffffff', fontStyle: 'bold' }
+        { fontSize: `${DS.font.size.base}px`, color: UI.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle }
       ));
       this.add(scene.add.text(
         startX + 16, y + 42, role.desc,
-        { fontSize: '12px', color: '#f8f4ee', wordWrap: { width: cardW - 32 } }
+        { fontSize: `${DS.font.size.xs}px`, color: UI.textMuted, wordWrap: { width: cardW - 32 } }
       ));
     });
   }

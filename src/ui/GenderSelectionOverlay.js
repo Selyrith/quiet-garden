@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { UNIFIED, createUnifiedButton } from './ui-unified.js';
 import { DS } from './DesignSystem.js';
+import { UI, drawPanel } from './ui-theme.js';
 
 export class GenderSelectionOverlay extends Phaser.GameObjects.Container {
   constructor(scene, onSelect) {
@@ -12,7 +13,7 @@ export class GenderSelectionOverlay extends Phaser.GameObjects.Container {
     this.onSelect = onSelect;
 
     // Затемнение фона
-    this.bg = scene.add.rectangle(0, 0, cam.width, cam.height, 0x000000, 0.6)
+    this.bg = scene.add.rectangle(0, 0, cam.width, cam.height, 0x231912, 0.58)
       .setOrigin(0).setInteractive();
     this.bg.on('pointerdown', () => {});
     this.add(this.bg);
@@ -23,19 +24,20 @@ export class GenderSelectionOverlay extends Phaser.GameObjects.Container {
     const panelX = cam.width / 2;
     const panelY = cam.height / 2;
 
-    this.panel = scene.add.rectangle(panelX, panelY, panelW, panelH, 0x1a1f2b, 0.98)
-      .setStrokeStyle(3, 0x4a5a6a).setInteractive();
+    this.panel = scene.add.graphics();
+    drawPanel(this.panel, panelX - panelW / 2, panelY - panelH / 2, panelW, panelH, DS.radius.lg, true);
+    this.panel.setInteractive(new Phaser.Geom.Rectangle(panelX - panelW / 2, panelY - panelH / 2, panelW, panelH), Phaser.Geom.Rectangle.Contains);
     this.add(this.panel);
 
     // Заголовок
     this.title = scene.add.text(panelX, panelY - panelH / 2 + 40, 'Выберите персонажа', {
-      fontSize: '24px', color: '#ffffff', fontStyle: 'bold'
+      fontSize: `${DS.font.size.xl}px`, color: UI.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle
     }).setOrigin(0.5);
     this.add(this.title);
 
     // Подсказка
     this.subtitle = scene.add.text(panelX, panelY - panelH / 2 + 80, 'Это будет ваш аватар в саду', {
-      fontSize: '15px', color: '#c9a884'
+      fontSize: `${DS.font.size.base}px`, color: UI.textMuted
     }).setOrigin(0.5);
     this.add(this.subtitle);
 
@@ -68,10 +70,10 @@ export class GenderSelectionOverlay extends Phaser.GameObjects.Container {
 
     // Подписи под аватарами
     this.maleLabel = scene.add.text(startX, avatarY + avatarSize / 2 + 20, 'Мужской', {
-      fontSize: '16px', color: '#ffffff', fontStyle: 'bold'
+      fontSize: `${DS.font.size.base}px`, color: UI.textDark, fontStyle: 'bold'
     }).setOrigin(0.5);
     this.femaleLabel = scene.add.text(startX + avatarSize + gap, avatarY + avatarSize / 2 + 20, 'Женский', {
-      fontSize: '16px', color: '#c9a884', fontStyle: 'bold'
+      fontSize: `${DS.font.size.base}px`, color: UI.textMuted, fontStyle: 'bold'
     }).setOrigin(0.5);
     this.add([this.maleLabel, this.femaleLabel]);
 
@@ -82,13 +84,13 @@ export class GenderSelectionOverlay extends Phaser.GameObjects.Container {
       if (gender === 'male') {
         this.maleBorder.setAlpha(1);
         this.femaleBorder.setAlpha(0);
-        this.maleLabel.setColor('#ffffff');
-        this.femaleLabel.setColor('#c9a884');
+        this.maleLabel.setColor(UI.textDark);
+        this.femaleLabel.setColor(UI.textMuted);
       } else {
         this.maleBorder.setAlpha(0);
         this.femaleBorder.setAlpha(1);
-        this.maleLabel.setColor('#c9a884');
-        this.femaleLabel.setColor('#ffffff');
+        this.maleLabel.setColor(UI.textMuted);
+        this.femaleLabel.setColor(UI.textDark);
       }
     };
 

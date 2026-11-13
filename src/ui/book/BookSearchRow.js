@@ -18,7 +18,7 @@ export function setupSearchRow(book) {
   book.bookContainer.add(bg);
 
   const label = scene.add.text(x, y, book.searchQuery ? `🔍 ${book.searchQuery}` : '🔍 Поиск...', {
-    fontSize: '14px', color: '#3e2723', fontFamily: 'Georgia, serif', fontStyle: 'bold'
+    fontSize: '14px', color: '#3e2723', fontFamily: 'Nunito, Georgia, serif', fontStyle: 'bold'
   }).setOrigin(0.5);
   book.bookContainer.add(label);
 

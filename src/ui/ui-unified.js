@@ -8,8 +8,8 @@ export const UNIFIED = {
   colorLo: 0xc9a884, // нажатие (темнее)
   colorDisabledAlpha: 0.4,
   text: '#ffffff',
-  minTouch: 44,
-  radius: 12,
+  minTouch: 48,
+  radius: 16,
 
   // Вторичный цвет для закрытия / отклонения (ниже по иерархии)
   secondary: 0x8e7b63,

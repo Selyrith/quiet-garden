@@ -4,6 +4,7 @@ import { MUTATION_COUNT, getMutation } from '../../shared/mutations.js';
 import { drawPixelPlant } from './PixelArt.js';
 import { UNIFIED } from './ui-unified.js';
 import { DS } from './DesignSystem.js';
+import { UI, drawPanel } from './ui-theme.js';
 
 const MUT_PER_PAGE = 20;
 
@@ -22,24 +23,25 @@ export class MutationsOverlay extends Phaser.GameObjects.Container {
     scene.hideSignpost?.();
     if (scene.signpostDom) { scene.signpostDom.destroy(); scene.signpostDom = null; }
 
-    this.bg = scene.add.rectangle(0, 0, cam.width, cam.height, 0x000000, 0.9).setOrigin(0).setInteractive();
+    this.bg = scene.add.rectangle(0, 0, cam.width, cam.height, 0x231912, 0.62).setOrigin(0).setInteractive();
     this.add(this.bg);
 
     const panelW = Math.min(360, cam.width - 20);
     const panelH = Math.min(420, cam.height - 40);
-    this.panel = scene.add.rectangle(cam.width / 2, cam.height / 2, panelW, panelH, 0x1a1f2b, 0.98).setStrokeStyle(2, 0x4a5a6a);
+    this.panel = scene.add.graphics();
+    drawPanel(this.panel, cam.width / 2 - panelW / 2, cam.height / 2 - panelH / 2, panelW, panelH, DS.radius.lg, true);
     this.add(this.panel);
 
     const plant = getPlant(plantSeed);
     this.title = scene.add.text(cam.width / 2, cam.height / 2 - panelH / 2 + 16, `Мутации: ${plant.name}`, {
-      fontSize: '16px', color: '#ffffff', fontStyle: 'bold'
+      fontSize: `${DS.font.size.base}px`, color: UI.textDark, fontStyle: 'bold', fontFamily: UI.fontTitle
     }).setOrigin(0.5, 0);
     this.add(this.title);
 
-    const closeHitArea = scene.add.rectangle(cam.width / 2 + panelW / 2 - 24, cam.height / 2 - panelH / 2 + 24, 44, 44, UNIFIED.color).setInteractive({ useHandCursor: true });
+    const closeHitArea = scene.add.rectangle(cam.width / 2 + panelW / 2 - 24, cam.height / 2 - panelH / 2 + 24, UNIFIED.minTouch, UNIFIED.minTouch, UNIFIED.color).setInteractive({ useHandCursor: true });
     closeHitArea.setStrokeStyle(2, UNIFIED.colorHi);
     const closeBtn = scene.add.text(cam.width / 2 + panelW / 2 - 24, cam.height / 2 - panelH / 2 + 12, '✕', {
-      fontSize: '22px', color: '#3e2723', fontStyle: 'bold'
+      fontSize: `${DS.font.size.lg}px`, color: UI.textDark, fontStyle: 'bold'
     }).setOrigin(0.5, 0);
     closeHitArea.on('pointerdown', () => this.destroy());
     this.add([closeHitArea, closeBtn]);
@@ -48,17 +50,17 @@ export class MutationsOverlay extends Phaser.GameObjects.Container {
     this.add(this.grid);
 
     this.pagerText = scene.add.text(cam.width / 2, cam.height / 2 + panelH / 2 - 24, '', {
-      fontSize: '12px', color: '#c9a884'
+      fontSize: `${DS.font.size.xs}px`, color: UI.textMuted
     }).setOrigin(0.5);
     this.add(this.pagerText);
 
     this.prevBtn = scene.add.text(cam.width / 2 - panelW / 2 + 30, cam.height / 2 + panelH / 2 - 24, '◀', {
-      fontSize: '22px', color: '#ffffff'
+      fontSize: `${DS.font.size.lg}px`, color: UI.textMuted
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     this.add(this.prevBtn);
 
     this.nextBtn = scene.add.text(cam.width / 2 + panelW / 2 - 30, cam.height / 2 + panelH / 2 - 24, '▶', {
-      fontSize: '22px', color: '#ffffff'
+      fontSize: `${DS.font.size.lg}px`, color: UI.textDark
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     this.add(this.nextBtn);
 
